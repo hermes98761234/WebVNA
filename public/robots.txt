@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vkopitsa.github.io/WebVNA/sitemap.xml

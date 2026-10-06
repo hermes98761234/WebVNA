@@ -2,6 +2,10 @@
 
 A browser app for the **LiteVNA** (and the NanoVNA V2 family). Connect over USB, sweep from 50 kHz to 6.3 GHz, calibrate, and analyse S11/S21 on rectangular and Smith charts. It runs in Chrome or Edge with no install and no drivers.
 
+**Try it now: [vkopitsa.github.io/WebVNA](https://vkopitsa.github.io/WebVNA/)** (click **Simulator** if you have no device).
+
+[![Deploy to GitHub Pages](https://github.com/vkopitsa/WebVNA/actions/workflows/deploy.yml/badge.svg)](https://github.com/vkopitsa/WebVNA/actions/workflows/deploy.yml)
+
 ![WebVNA showing an antenna sweep: S11 log-magnitude and SWR on the left, Smith chart on the right, marker and VSWR bandwidth readouts below](docs/screenshot.jpg)
 
 *The built-in simulator, sweeping an antenna near 435 MHz.*
@@ -50,6 +54,8 @@ npm run preview   # serve dist/ locally
 ```
 
 `dist/` uses relative paths, so it works from any sub-path, including GitHub Pages. Web Serial only works in a [secure context](https://developer.mozilla.org/docs/Web/Security/Secure_Contexts), so serve the site over HTTPS or from `localhost`.
+
+Every push to `main` runs the tests, builds the site and deploys it to GitHub Pages (`.github/workflows/deploy.yml`). In a fork, enable it under **Settings → Pages → Source: GitHub Actions**.
 
 ## Development
 

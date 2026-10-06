@@ -2,13 +2,63 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebVNA</title>
-    <meta name="description" content="LiteVNA / NanoVNA V2 vector network analyzer in the browser (Web Serial)" />
+    <title>WebVNA: LiteVNA &amp; NanoVNA V2 vector network analyzer in your browser</title>
+    <meta name="description" content="Control a LiteVNA or NanoVNA V2 from Chrome or Edge over USB, with no install. Sweep 50 kHz to 6.3 GHz, calibrate, and measure S11, SWR, impedance, Smith chart, S21 and TDR. Free and open source." />
+    <meta name="keywords" content="LiteVNA, NanoVNA, NanoVNA V2, VNA, vector network analyzer, Web Serial, antenna analyzer, SWR, S11, Smith chart, TDR, Touchstone, ham radio" />
+    <meta name="author" content="Vladimir Kopitsa" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href="https://vkopitsa.github.io/WebVNA/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph / Facebook / Telegram / Slack -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WebVNA" />
+    <meta property="og:url" content="https://vkopitsa.github.io/WebVNA/" />
+    <meta property="og:title" content="WebVNA: LiteVNA &amp; NanoVNA V2 in your browser" />
+    <meta property="og:description" content="Sweep, calibrate and analyse antennas and filters from Chrome or Edge over USB: S11, SWR, Smith chart, S21, TDR. No install." />
+    <meta property="og:image" content="https://vkopitsa.github.io/WebVNA/og-image.jpg" />
+    <meta property="og:image:width" content="1440" />
+    <meta property="og:image:height" content="757" />
+    <meta property="og:image:alt" content="WebVNA showing an antenna sweep with SWR and Smith charts" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="uk_UA" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="WebVNA: LiteVNA &amp; NanoVNA V2 in your browser" />
+    <meta name="twitter:description" content="Sweep, calibrate and analyse antennas and filters from Chrome or Edge over USB. No install." />
+    <meta name="twitter:image" content="https://vkopitsa.github.io/WebVNA/og-image.jpg" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "WebVNA",
+        "url": "https://vkopitsa.github.io/WebVNA/",
+        "description": "Browser app for the LiteVNA and NanoVNA V2 vector network analyzers over Web Serial: sweeps, calibration, S11/SWR/impedance, Smith chart, S21, TDR and Touchstone files.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Windows, macOS, Linux, ChromeOS (Chrome or Edge)",
+        "browserRequirements": "Requires Web Serial or WebUSB (Chrome or Edge 89+)",
+        "inLanguage": ["en", "uk"],
+        "isAccessibleForFree": true,
+        "license": "https://opensource.org/licenses/MIT",
+        "codeRepository": "https://github.com/vkopitsa/WebVNA",
+        "image": "https://vkopitsa.github.io/WebVNA/og-image.jpg",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>WebVNA</h1>
+      <p>WebVNA controls a LiteVNA or NanoVNA V2 vector network analyzer from the browser over USB (Web Serial). It needs JavaScript and Chrome or Edge.</p>
+      <p>Source code: <a href="https://github.com/vkopitsa/WebVNA">github.com/vkopitsa/WebVNA</a></p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
