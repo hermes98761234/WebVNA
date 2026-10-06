@@ -28,6 +28,7 @@ let booted = false;
 
 export default function App() {
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("stimulus");
+  const [drawer, setDrawer] = useState(false); // settings drawer on narrow screens
   const showRect = useStore((s) => s.showRect);
   const showSmith = useStore((s) => s.showSmith);
   const markers = useStore((s) => s.markers);
@@ -48,13 +49,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <Toolbar />
+      <Toolbar onMenu={() => setDrawer((d) => !d)} menuOpen={drawer} />
       <div className="body">
-        <aside className="side">
+        {drawer && <div className="backdrop" onClick={() => setDrawer(false)} aria-hidden="true" />}
+        <aside className={"side" + (drawer ? " open" : "")} aria-label="Settings">
           <nav className="tabs" role="tablist">
             {TABS.map(([id, label]) => (
               <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>
             ))}
+            <button className="mobile-only drawer-close" onClick={() => setDrawer(false)} aria-label="Close settings">✕</button>
           </nav>
           <div className="panel"><Panel /></div>
         </aside>

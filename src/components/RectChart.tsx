@@ -179,7 +179,7 @@ export function RectChart() {
   return (
     <div className="chart" ref={wrap}>
       <ChartTools target={wrap} canvas={canvas} name="rect" />
-      <canvas ref={canvas}
+      <canvas ref={canvas} className="pan-y"
         onPointerDown={(e) => {
           (e.target as HTMLElement).setPointerCapture(e.pointerId);
           const x = xAt(e);
@@ -200,6 +200,7 @@ export function RectChart() {
           drag.current = null; setZoom(null);
         }}
         onPointerLeave={() => { if (!drag.current) setHover(null); }}
+        onPointerCancel={() => { drag.current = null; setZoom(null); setHover(null); }}
         onDoubleClick={() => set((st) => ({ traces: st.traces.map((t) => ({ ...t, scale: { ...t.scale, auto: true } })) }))}
         aria-label="Rectangular chart. Drag to move the active marker, Shift-drag to zoom, double-click to auto-scale."
       />

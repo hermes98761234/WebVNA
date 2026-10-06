@@ -3,7 +3,7 @@ import { connectSerial, connectSimulator, connectUsb, disconnect, hasWebSerial, 
 import { calCovers } from "../lib/calibration";
 import { useEffect, useState } from "react";
 
-export function Toolbar() {
+export function Toolbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: boolean }) {
   const status = useStore((s) => s.status);
   const info = useStore((s) => s.info);
   const linkKind = useStore((s) => s.linkKind);
@@ -45,6 +45,7 @@ export function Toolbar() {
 
   return (
     <div className="toolbar">
+      <button className="mobile-only menu-btn" onClick={onMenu} aria-label="Settings" aria-expanded={menuOpen}>☰</button>
       <span className="brand">WebVNA</span>
       {!connected ? (
         <>
@@ -55,7 +56,7 @@ export function Toolbar() {
       ) : (
         <button onClick={() => disconnect()}>Disconnect</button>
       )}
-      {connected && info && <span className="hint">{info.model} · fw {info.fwMajor}.{info.fwMinor} · {linkKind}{vbat != null ? ` · ${vbat.toFixed(2)} V` : ""}</span>}
+      {connected && info && <span className="hint device-info">{info.model} · fw {info.fwMajor}.{info.fwMinor} · {linkKind}{vbat != null ? ` · ${vbat.toFixed(2)} V` : ""}</span>}
       {status === "connecting" && <span className="hint">Connecting…</span>}
       <span className="spacer" />
       {calBadge}
@@ -66,7 +67,7 @@ export function Toolbar() {
       <div className="progress" title={lastSweepMs ? `Last sweep ${(lastSweepMs / 1000).toFixed(2)} s (${Math.round(points / (lastSweepMs / 1000))} pts/s)` : ""}>
         <div style={{ width: `${(running ? progress : 0) * 100}%` }} />
       </div>
-      <select aria-label="Theme" value={theme} onChange={(e) => setTheme(e.target.value)}>
+      <select className="theme-select" aria-label="Theme" value={theme} onChange={(e) => setTheme(e.target.value)}>
         <option value="auto">Auto theme</option>
         <option value="light">Light</option>
         <option value="dark">Dark</option>
