@@ -9,6 +9,7 @@ import { parseTouchstone, writeCsv, writeTouchstone } from "./touchstone";
 import { cableAnalysis, crystalAnalysis, filterAnalysis, lcMatch, resonances, search, swrBandwidth } from "./analysis";
 import { DEFAULT_TDR, fft, timeDomain } from "./tdr";
 import { parseHz, si } from "./units";
+import { stepScale } from "../components/ScaleTools";
 
 const S = 300e6, E = 600e6, N = 301;
 
@@ -230,6 +231,14 @@ describe("files and units", () => {
     expect(t.data[0].s11[1]).toBeCloseTo(0.5, 9);
   });
   it("writes CSV", () => expect(writeCsv(d).split("\n")[0]).toContain("frequency_hz"));
+  it("steps scales in 1-2-5", () => {
+    expect(stepScale(0.5, 1)).toBe(1);
+    expect(stepScale(1, 1)).toBe(2);
+    expect(stepScale(2, 1)).toBe(5);
+    expect(stepScale(0.5, -1)).toBeCloseTo(0.2, 12);
+    expect(stepScale(10, -1)).toBe(5);
+    expect(stepScale(1, -1)).toBeCloseTo(0.5, 12);
+  });
   it("parses and formats units", () => {
     expect(parseHz("435M")).toBe(435e6);
     expect(parseHz("1.2 GHz")).toBe(1.2e9);

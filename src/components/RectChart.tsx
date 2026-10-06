@@ -6,9 +6,10 @@ import { fmtHz, fmtHzShort, si } from "../lib/units";
 import { FORMAT_BY_ID } from "../lib/formats";
 import { restartIfRunning } from "../controller";
 import { ChartTools } from "./ChartTools";
+import { ScaleTools } from "./ScaleTools";
 
 const DIV_Y = 8, DIV_X = 10;
-const M = { l: 62, r: 58, t: 40, b: 26 };
+const M = { l: 62, r: 58, t: 40, b: 56 };
 
 export function RectChart() {
   const s = useStore();
@@ -191,6 +192,7 @@ export function RectChart() {
   return (
     <div className="chart" ref={wrap}>
       <ChartTools target={wrap} canvas={canvas} name="rect" />
+      {!tdr.enabled && <ScaleTools series={series} target={wrap} />}
       <canvas ref={canvas} className="pan-y"
         onPointerDown={(e) => {
           (e.target as HTMLElement).setPointerCapture(e.pointerId);

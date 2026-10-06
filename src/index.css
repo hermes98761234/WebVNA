@@ -196,3 +196,7 @@ table.data tr.active td { background: var(--panel2); }
 .grid2 input, .grid2 select, .grid3 input, .grid3 select { width: 100%; }
 .trace-row select.fmt { flex: 1; min-width: 0; }
 .trace-row { flex-wrap: nowrap; }
+
+.scale-tools { position: absolute; left: 8px; bottom: 6px; z-index: 2; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.scale-tools select { font-size: 12px; padding: 1px 4px; font-weight: 600; }
+@media (max-width: 800px) { .scale-tools select { font-size: 14px; } }
