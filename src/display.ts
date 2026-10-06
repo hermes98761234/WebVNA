@@ -5,6 +5,7 @@ import { FORMAT_BY_ID, impedance, reactanceComponent, traceValues, type FormatId
 import { timeDomain } from "./lib/tdr";
 import { niceStep, si } from "./lib/units";
 import type { State, Trace, TraceScale } from "./store";
+import { tr } from "./i18n";
 
 /** SWR above this is "fully mismatched" (|Γ| > 0.935); auto scale doesn't zoom out further. */
 export const SWR_AUTO_CAP = 30;
@@ -60,7 +61,7 @@ export function rectSeries(s: State): { series: Series[]; xKind: "freq" | "dista
     const sets: { data: SweepPoint[]; label: string; dashed: boolean; color: string; primary: boolean }[] = [];
     const d = traceData(s, t);
     if (d.length) sets.push({ data: d, label: "", dashed: false, color: t.color, primary: true });
-    if (t.memory && t.math === "off" && s.memories[t.memory]) sets.push({ data: s.memories[t.memory]!, label: ` mem ${t.memory}`, dashed: true, color: t.color, primary: false });
+    if (t.memory && t.math === "off" && s.memories[t.memory]) sets.push({ data: s.memories[t.memory]!, label: ` ${tr("mem {0}", t.memory)}`, dashed: true, color: t.color, primary: false });
     if (ti === s.activeTrace)
       for (const r of s.refs) if (r.visible && (t.channel === "s11" || r.ports === 2)) sets.push({ data: r.data, label: ` ${r.name}`, dashed: true, color: r.color, primary: false });
     for (const set of sets) {
@@ -77,7 +78,7 @@ export function rectSeries(s: State): { series: Series[]; xKind: "freq" | "dista
         const x = Float64Array.from(set.data, (p) => p.f);
         const fd = FORMAT_BY_ID[t.format];
         const scale = t.scale.auto ? (t.format === "swr" ? autoScale(y, 8, { floor: 1, cap: SWR_AUTO_CAP }) : autoScale(y)) : t.scale;
-        series.push({ traceIndex: ti, label: `${t.channel.toUpperCase()} ${fd.label}${t.math === "subtract" ? ` /${t.memory}` : ""}${set.label}`, color: set.color, x, y, unit: fd.unit, dashed: set.dashed, scale, primary: set.primary });
+        series.push({ traceIndex: ti, label: `${t.channel.toUpperCase()} ${tr(fd.label)}${t.math === "subtract" ? ` /${t.memory}` : ""}${set.label}`, color: set.color, x, y, unit: fd.unit, dashed: set.dashed, scale, primary: set.primary });
       }
     }
   });

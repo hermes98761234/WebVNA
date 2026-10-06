@@ -1,9 +1,11 @@
 import type { RefObject } from "react";
 import { download } from "../controller";
 import { cssVar } from "../display";
+import { useT } from "../i18n";
 
 /** Fullscreen ("pop-out") and save-as-PNG buttons for a chart. */
 export function ChartTools({ target, canvas, name }: { target: RefObject<HTMLDivElement | null>; canvas: RefObject<HTMLCanvasElement | null>; name: string }) {
+  const t = useT();
   const save = () => {
     const c = canvas.current;
     if (!c) return;
@@ -23,8 +25,8 @@ export function ChartTools({ target, canvas, name }: { target: RefObject<HTMLDiv
   };
   return (
     <div className="chart-tools">
-      <button className="small" onClick={save} title="Save chart as PNG">PNG</button>
-      <button className="small" onClick={full} title="Fullscreen">⛶</button>
+      <button className="small" onClick={save} title={t("Save chart as PNG")}>PNG</button>
+      <button className="small" onClick={full} title={t("Fullscreen")}>⛶</button>
     </div>
   );
 }

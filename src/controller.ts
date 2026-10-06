@@ -9,6 +9,7 @@ import { FORMAT_BY_ID, traceValues } from "./lib/formats";
 import { nearestIndex, search } from "./lib/analysis";
 import { parseTouchstone, writeCsv, writeTouchstone } from "./lib/touchstone";
 import { get, log, set, TRACE_COLORS, type MemorySlot } from "./store";
+import { tr } from "./i18n";
 
 let vna: LiteVNA | null = null;
 let link: LinkBase | null = null;
@@ -30,7 +31,7 @@ async function attach(l: LinkBase) {
   l.trace = (dir, bytes) => { if (get().commsMonitor) log(`${dir === "tx" ? "→" : "←"} ${hex(bytes)}`, "comms"); };
   l.onClose = () => {
     if (link !== l) return;
-    log("The device was disconnected.", "error");
+    log(tr("The device was disconnected."), "error");
     stop();
     vna = null; link = null;
     set({ status: "disconnected", info: null, linkKind: "", running: false });
@@ -39,15 +40,15 @@ async function attach(l: LinkBase) {
   try {
     const info = await vna.init();
     set({ status: "connected", info, linkKind: l.kind });
-    log(`Connected via ${l.kind}: ${info.model}, hw rev ${info.hardware}, firmware ${info.fwMajor}.${info.fwMinor}`);
-    if (info.maxPoints === 0) throw new Error("The device is in DFU/bootloader mode. Restart it normally.");
+    log(tr("Connected via {0}: {1}, hw rev {2}, firmware {3}.{4}", l.kind, info.model, info.hardware, info.fwMajor, info.fwMinor));
+    if (info.maxPoints === 0) throw new Error(tr("The device is in DFU/bootloader mode. Restart it normally."));
     const s = get();
     if (s.points > info.maxPoints) set({ points: info.maxPoints });
     await applyDeviceSettings();
     try { set({ serial: await vna.readSerial() }); } catch { /* optional */ }
     await readVbat(true);
   } catch (e) {
-    log(`Connection failed: ${errMsg(e)}`, "error");
+    log(tr("Connection failed: {0}", errMsg(e)), "error");
     await l.close();
     vna = null; link = null;
     set({ status: "disconnected", info: null, linkKind: "" });
@@ -56,7 +57,7 @@ async function attach(l: LinkBase) {
 }
 
 export async function connectSerial(port?: SerialPort) {
-  if (!hasWebSerial()) { log("Web Serial isn't available. Use Chrome or Edge on desktop over https or localhost.", "error"); return; }
+  if (!hasWebSerial()) { log(tr("Web Serial isn't available. Use Chrome or Edge on desktop over https or localhost."), "error"); return; }
   await disconnect();
   set({ status: "connecting" });
   try {
@@ -66,7 +67,7 @@ export async function connectSerial(port?: SerialPort) {
     await attach(l);
   } catch (e) {
     set({ status: "disconnected" });
-    if ((e as Error)?.name !== "NotFoundError") log(`Web Serial: ${errMsg(e)}`, "error");
+    if ((e as Error)?.name !== "NotFoundError") log(tr("Web Serial: {0}", errMsg(e)), "error");
   }
 }
 
@@ -81,7 +82,7 @@ export async function reconnectKnown(): Promise<boolean> {
 }
 
 export async function connectUsb() {
-  if (!hasWebUsb()) { log("WebUSB isn't available in this browser.", "error"); return; }
+  if (!hasWebUsb()) { log(tr("WebUSB isn't available in this browser."), "error"); return; }
   await disconnect();
   set({ status: "connecting" });
   try {
@@ -91,7 +92,7 @@ export async function connectUsb() {
     await attach(l);
   } catch (e) {
     set({ status: "disconnected" });
-    if ((e as Error)?.name !== "NotFoundError") log(`WebUSB: ${errMsg(e)}`, "error");
+    if ((e as Error)?.name !== "NotFoundError") log(tr("WebUSB: {0}", errMsg(e)), "error");
   }
 }
 
@@ -110,7 +111,7 @@ export async function disconnect() {
   try { if (v && !(l instanceof MockLink)) await v.exitUsbMode(); } catch { /* ignore */ }
   await l.close();
   set({ status: "disconnected", info: null, linkKind: "", running: false });
-  log("Disconnected. The device screen is back in control.");
+  log(tr("Disconnected. The device screen is back in control."));
 }
 
 export function setSimDut(d: MockLink["dut"]) {
@@ -128,7 +129,7 @@ export async function applyDeviceSettings() {
     await vna.setPower({ hf: s.powerHf, lf: s.powerLf });
     await vna.setChannels(s.channelsMode);
     await vna.setDataMode(s.deviceCal ? DATA_MODE.DEVICE_CAL : DATA_MODE.USB);
-  } catch (e) { log(`Device settings: ${errMsg(e)}`, "error"); }
+  } catch (e) { log(tr("Device settings: {0}", errMsg(e)), "error"); }
 }
 
 export async function setIfAverage(n: number) { set({ ifAverage: n }); if (vna) await vna.setAverage(n).catch((e) => log(errMsg(e), "error")); }
@@ -140,7 +141,7 @@ export async function setChannelsMode(mode: number) { set({ channelsMode: mode }
 export async function setDeviceCal(on: boolean) {
   set({ deviceCal: on });
   if (vna) await vna.setDataMode(on ? DATA_MODE.DEVICE_CAL : DATA_MODE.USB).catch((e) => log(errMsg(e), "error"));
-  log(on ? "Using the calibration stored in the device (data mode 3)." : "Using raw data (data mode 0).");
+  log(on ? tr("Using the calibration stored in the device (data mode 3).") : tr("Using raw data (data mode 0)."));
 }
 
 export async function readVbat(quiet = false) {
@@ -148,14 +149,14 @@ export async function readVbat(quiet = false) {
   try {
     const v = await vna.readVbat();
     set({ vbat: v });
-    if (!quiet) log(`Battery: ${v.toFixed(3)} V`);
-  } catch (e) { if (!quiet) log(`Battery: ${errMsg(e)}`, "error"); }
+    if (!quiet) log(tr("Battery: {0} V", v.toFixed(3)));
+  } catch (e) { if (!quiet) log(tr("Battery: {0}", errMsg(e)), "error"); }
 }
 
 export async function syncClock() {
   if (!vna) return;
-  try { await vna.setTime(); log(`Device clock set to ${new Date().toLocaleString()}.`); }
-  catch (e) { log(`Clock: ${errMsg(e)}`, "error"); }
+  try { await vna.setTime(); log(tr("Device clock set to {0}.", new Date().toLocaleString())); }
+  catch (e) { log(tr("Clock: {0}", errMsg(e)), "error"); }
 }
 
 export async function screenshot() {
@@ -163,14 +164,14 @@ export async function screenshot() {
   const wasRunning = get().continuous;
   if (wasRunning) stop();
   try {
-    log("Capturing device screen…");
+    log(tr("Capturing device screen…"));
     const shot = await vna.screenshot();
     const cv = document.createElement("canvas");
     cv.width = shot.width; cv.height = shot.height;
     cv.getContext("2d")!.putImageData(new ImageData(new Uint8ClampedArray(shot.rgba), shot.width, shot.height), 0, 0);
     set({ screenshot: { width: shot.width, height: shot.height, url: cv.toDataURL("image/png") } });
-    log(`Screenshot ${shot.width}×${shot.height}`);
-  } catch (e) { log(`Screenshot: ${errMsg(e)}`, "error"); }
+    log(tr("Screenshot {0}×{1}", shot.width, shot.height));
+  } catch (e) { log(tr("Screenshot: {0}", errMsg(e)), "error"); }
   if (wasRunning) startContinuous();
 }
 
@@ -184,7 +185,7 @@ function segments() {
 }
 
 async function acquire(): Promise<SweepPoint[]> {
-  if (!vna) throw new Error("Not connected.");
+  if (!vna) throw new Error(tr("Not connected."));
   const s = get();
   const n = Math.max(1, s.swAverage);
   let acc: SweepPoint[] | null = null;
@@ -214,7 +215,7 @@ export async function sweepOnce() {
   if (!vna || get().running) return;
   set({ running: true, progress: 0 });
   try { await sweepCycle(); }
-  catch (e) { if (!(e instanceof AbortError)) log(`Sweep failed: ${errMsg(e)}`, "error"); }
+  catch (e) { if (!(e instanceof AbortError)) log(tr("Sweep failed: {0}", errMsg(e)), "error"); }
   finally { set({ running: false }); }
 }
 
@@ -225,7 +226,7 @@ export async function startContinuous() {
     try { await sweepCycle(); }
     catch (e) {
       if (e instanceof AbortError && get().continuous) continue; // stimulus changed: restart the sweep
-      if (!(e instanceof AbortError)) log(`Sweep failed: ${errMsg(e)}`, "error");
+      if (!(e instanceof AbortError)) log(tr("Sweep failed: {0}", errMsg(e)), "error");
       break;
     }
     await new Promise((r) => setTimeout(r, 0));
@@ -282,7 +283,7 @@ export function updateMarkers() {
 /* ------------------------------------------------------------------ calibration */
 
 export async function measureStandard(std: Standard) {
-  if (!vna) { log("Connect a device (or the simulator) first.", "error"); return; }
+  if (!vna) { log(tr("Connect a device (or the simulator) first."), "error"); return; }
   const wasRunning = get().continuous;
   stop();
   while (get().running) await new Promise((r) => setTimeout(r, 20));
@@ -290,7 +291,7 @@ export async function measureStandard(std: Standard) {
   set({ running: true, progress: 0 });
   try {
     if (get().deviceCal) await setDeviceCal(false);
-    log(`Measuring ${std.toUpperCase()}…`);
+    log(tr("Measuring {0}…", tr(std.toUpperCase())));
     const d = await acquire();
     const freqs = d.map((p) => p.f);
     set((s) => {
@@ -304,8 +305,8 @@ export async function measureStandard(std: Standard) {
         },
       };
     });
-    log(`${std.toUpperCase()} measured (${freqs.length} points).`);
-  } catch (e) { if (!(e instanceof AbortError)) log(`Calibration sweep failed: ${errMsg(e)}`, "error"); }
+    log(tr("{0} measured ({1} points).", tr(std.toUpperCase()), freqs.length));
+  } catch (e) { if (!(e instanceof AbortError)) log(tr("Calibration sweep failed: {0}", errMsg(e)), "error"); }
   finally {
     set({ running: false });
     if (isSimulator()) (link as MockLink).dut = get().simDut;
@@ -316,16 +317,16 @@ export async function measureStandard(std: Standard) {
 export function finishCalibration(name = `Cal ${new Date().toLocaleString()}`) {
   const s = get();
   const w = s.calWork;
-  if (!w.freqs) { log("Measure the standards first.", "error"); return; }
+  if (!w.freqs) { log(tr("Measure the standards first."), "error"); return; }
   const m = w.meas;
   const hasSol = m.open && m.short && m.load;
-  if (!hasSol && !m.open && !m.short && !m.thru) { log("Measure at least OPEN, SHORT and LOAD (or THRU).", "error"); return; }
+  if (!hasSol && !m.open && !m.short && !m.thru) { log(tr("Measure at least OPEN, SHORT and LOAD (or THRU)."), "error"); return; }
   const cal: CalData = {
     name, created: new Date().toISOString(), freqs: w.freqs, kit: s.kit, enhancedResponse: s.enhancedResponse && !!hasSol && !!m.thru,
     open: m.open, short: m.short, load: m.load, isolation: m.isolation, thru: m.thru, thru11: w.thru11 ?? undefined,
   };
   setCalibration(cal);
-  log(`Calibration applied: ${Object.keys(m).map((k) => k.toUpperCase()).join(", ")}${cal.enhancedResponse ? " + enhanced response" : ""}.`);
+  log(tr("Calibration applied: {0}{1}.", Object.keys(m).map((k) => tr(k.toUpperCase())).join(", "), cal.enhancedResponse ? ` + ${tr("enhanced response")}` : ""));
 }
 
 const ACTIVE_CAL = "webvna.activecal";
@@ -342,12 +343,12 @@ export function restoreActiveCal() {
     if (!t) return;
     const cal = parseCal(t);
     set({ cal, terms: computeErrorTerms(cal) });
-    log(`Restored calibration: ${cal.name}`);
+    log(tr("Restored calibration: {0}", cal.name));
   } catch { /* ignore */ }
 }
 
 export function clearCalWork() { set({ calWork: { freqs: null, meas: {}, thru11: null } }); }
-export function resetCalibration() { setCalibration(null); clearCalWork(); log("Calibration cleared. Readings are raw."); }
+export function resetCalibration() { setCalibration(null); clearCalWork(); log(tr("Calibration cleared. Readings are raw.")); }
 
 /** Recompute error terms after changing the cal kit / enhanced response. */
 export function refreshCalTerms() {
@@ -372,9 +373,9 @@ export function listCalSlots(): string[] {
 }
 export function saveCalSlot(name: string) {
   const c = get().cal;
-  if (!c) { log("No calibration to save.", "error"); return; }
-  try { localStorage.setItem(CAL_PREFIX + name, serializeCal({ ...c, name })); log(`Calibration saved as "${name}".`); }
-  catch (e) { log(`Couldn't save calibration: ${errMsg(e)}`, "error"); }
+  if (!c) { log(tr("No calibration to save."), "error"); return; }
+  try { localStorage.setItem(CAL_PREFIX + name, serializeCal({ ...c, name })); log(tr("Calibration saved as \"{0}\".", name)); }
+  catch (e) { log(tr("Couldn't save calibration: {0}", errMsg(e)), "error"); }
 }
 export function loadCalSlot(name: string) {
   try {
@@ -383,8 +384,8 @@ export function loadCalSlot(name: string) {
     const cal = parseCal(t);
     set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
     setCalibration(cal);
-    log(`Calibration "${name}" loaded.`);
-  } catch (e) { log(`Couldn't load calibration: ${errMsg(e)}`, "error"); }
+    log(tr("Calibration \"{0}\" loaded.", name));
+  } catch (e) { log(tr("Couldn't load calibration: {0}", errMsg(e)), "error"); }
 }
 export function deleteCalSlot(name: string) { try { localStorage.removeItem(CAL_PREFIX + name); } catch { /* ignore */ } }
 
@@ -392,9 +393,9 @@ export function deleteCalSlot(name: string) { try { localStorage.removeItem(CAL_
 
 export function storeMemory(slot: MemorySlot) {
   const d = get().data;
-  if (!d.length) { log("Nothing to store yet: sweep first.", "error"); return; }
+  if (!d.length) { log(tr("Nothing to store yet: sweep first."), "error"); return; }
   set((s) => ({ memories: { ...s.memories, [slot]: d.map((p) => ({ ...p })) } }));
-  log(`Trace stored in memory ${slot}.`);
+  log(tr("Trace stored in memory {0}.", slot));
 }
 export function clearMemory(slot: MemorySlot) { set((s) => { const m = { ...s.memories }; delete m[slot]; return { memories: m }; }); }
 
@@ -402,8 +403,8 @@ export async function importTouchstoneFile(file: File) {
   try {
     const t = parseTouchstone(await file.text(), file.name);
     set((s) => ({ refs: [...s.refs, { name: file.name, data: t.data, ports: t.ports, visible: true, color: TRACE_COLORS[(s.refs.length + 2) % 4] }] }));
-    log(`Loaded ${file.name}: ${t.data.length} points, ${t.ports}-port.`);
-  } catch (e) { log(`Import ${file.name}: ${errMsg(e)}`, "error"); }
+    log(tr("Loaded {0}: {1} points, {2}-port.", file.name, t.data.length, t.ports));
+  } catch (e) { log(tr("Import {0}: {1}", file.name, errMsg(e)), "error"); }
 }
 
 export async function importCalFile(file: File) {
@@ -411,8 +412,8 @@ export async function importCalFile(file: File) {
     const cal = parseCal(await file.text());
     set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
     setCalibration(cal);
-    log(`Calibration loaded from ${file.name}.`);
-  } catch (e) { log(`Import ${file.name}: ${errMsg(e)}`, "error"); }
+    log(tr("Calibration loaded from {0}.", file.name));
+  } catch (e) { log(tr("Import {0}: {1}", file.name, errMsg(e)), "error"); }
 }
 
 /* ------------------------------------------------------------------ files */
@@ -430,16 +431,16 @@ const stamp = () => new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
 
 export function exportData(kind: "s1p" | "s2p" | "csv", fmt: "RI" | "MA" | "DB" = "RI") {
   const d = get().data;
-  if (!d.length) { log("Nothing to export yet: sweep first.", "error"); return; }
+  if (!d.length) { log(tr("Nothing to export yet: sweep first."), "error"); return; }
   const name = `${get().autoSaveName || "webvna"}-${stamp()}.${kind}`;
   const comment = `WebVNA ${get().info?.model ?? ""} ${get().cal ? "calibrated" : "raw"}`;
   download(name, kind === "csv" ? writeCsv(d) : writeTouchstone(d, kind === "s1p" ? 1 : 2, comment, fmt));
-  log(`Saved ${name}`);
+  log(tr("Saved {0}", name));
 }
 
 export function exportCal() {
   const c = get().cal;
-  if (!c) { log("No calibration to export.", "error"); return; }
+  if (!c) { log(tr("No calibration to export."), "error"); return; }
   download(`webvna-cal-${stamp()}.json`, serializeCal(c), "application/json");
 }
 
@@ -448,8 +449,8 @@ type DirPicker = { showDirectoryPicker?: (o?: { mode?: string }) => Promise<File
 
 export async function chooseAutoSaveDir(): Promise<boolean> {
   const w = window as unknown as DirPicker;
-  if (!w.showDirectoryPicker) { log("This browser can't write to a folder; each sweep will be downloaded instead.", "error"); return true; }
-  try { dirHandle = await w.showDirectoryPicker({ mode: "readwrite" }); log(`Auto-save folder: ${dirHandle.name}`); return true; }
+  if (!w.showDirectoryPicker) { log(tr("This browser can't write to a folder; each sweep will be downloaded instead."), "error"); return true; }
+  try { dirHandle = await w.showDirectoryPicker({ mode: "readwrite" }); log(tr("Auto-save folder: {0}", dirHandle.name)); return true; }
   catch { return false; }
 }
 
@@ -465,5 +466,5 @@ async function autoSaveSweep() {
       await w.write(text);
       await w.close();
     } else download(name, text);
-  } catch (e) { log(`Auto-save: ${errMsg(e)}`, "error"); }
+  } catch (e) { log(tr("Auto-save: {0}", errMsg(e)), "error"); }
 }

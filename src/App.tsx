@@ -12,6 +12,7 @@ import { RectChart } from "./components/RectChart";
 import { SmithChart } from "./components/SmithChart";
 import { MarkerTable } from "./components/MarkerTable";
 import { LogPanel } from "./components/LogPanel";
+import { useT, tr } from "./i18n";
 import { disconnect, hasWebSerial, reconnectKnown, restoreActiveCal, updateMarkers } from "./controller";
 
 const TABS = [
@@ -32,17 +33,21 @@ export default function App() {
   const showRect = useStore((s) => s.showRect);
   const showSmith = useStore((s) => s.showSmith);
   const markers = useStore((s) => s.markers);
-  const Panel = TABS.find((t) => t[0] === tab)![2];
+  const lang = useStore((s) => s.lang);
+  const t = useT();
+  const Panel = TABS.find((x) => x[0] === tab)![2];
 
   useEffect(() => {
     if (booted) return;
     booted = true;
     restoreActiveCal();
-    if (!hasWebSerial()) log("Web Serial isn't available here. Use Chrome or Edge on desktop (https or localhost). The simulator still works.", "error");
+    if (!hasWebSerial()) log(tr("Web Serial isn't available here. Use Chrome or Edge on desktop (https or localhost). The simulator still works."), "error");
     else void reconnectKnown();
     const bye = () => { void disconnect(); };
     window.addEventListener("beforeunload", bye);
   }, []);
+
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
 
   // Tracking markers follow tracking mode changes immediately.
   useEffect(() => { updateMarkers(); }, [markers]);
@@ -52,12 +57,12 @@ export default function App() {
       <Toolbar onMenu={() => setDrawer((d) => !d)} menuOpen={drawer} />
       <div className="body">
         {drawer && <div className="backdrop" onClick={() => setDrawer(false)} aria-hidden="true" />}
-        <aside className={"side" + (drawer ? " open" : "")} aria-label="Settings">
+        <aside className={"side" + (drawer ? " open" : "")} aria-label={t("Settings")}>
           <nav className="tabs" role="tablist">
             {TABS.map(([id, label]) => (
-              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>
+              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{t(label)}</button>
             ))}
-            <button className="mobile-only drawer-close" onClick={() => setDrawer(false)} aria-label="Close settings">✕</button>
+            <button className="mobile-only drawer-close" onClick={() => setDrawer(false)} aria-label={t("Close settings")}>✕</button>
           </nav>
           <div className="panel"><Panel /></div>
         </aside>

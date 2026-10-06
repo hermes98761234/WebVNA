@@ -4,9 +4,11 @@ import { traceData, traceReadout, valueText } from "../display";
 import { FORMAT_BY_ID, traceValues } from "../lib/formats";
 import { nearestIndex } from "../lib/analysis";
 import { fmtHz, si } from "../lib/units";
+import { useT } from "../i18n";
 
 export function MarkerTable() {
   const s = useStore();
+  const tl = useT();
   const { data, traces, markers, activeMarker, deltaRef } = s;
   const enabledTraces = traces.map((t, i) => ({ t, i })).filter(({ t }) => t.enabled);
 
@@ -15,17 +17,17 @@ export function MarkerTable() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, traces, s.memories]);
 
-  if (!data.length) return <div className="box"><h3>Markers</h3><p className="hint">Sweep to see marker readouts.</p></div>;
+  if (!data.length) return <div className="box"><h3>{tl("Markers")}</h3><p className="hint">{tl("Sweep to see marker readouts.")}</p></div>;
   const ref = deltaRef != null && markers[deltaRef]?.enabled ? markers[deltaRef] : null;
 
   return (
     <div className="box">
-      <h3>Markers{ref ? ` · Δ relative to M${deltaRef! + 1}` : ""}</h3>
+      <h3>{tl("Markers")}{ref ? ` · ${tl("Δ relative to M{0}", deltaRef! + 1)}` : ""}</h3>
       <table className="data">
         <thead>
           <tr>
-            <th>#</th><th>Frequency</th>
-            {enabledTraces.map(({ t, i }) => <th key={i} style={{ color: t.color }}>TR{i + 1} {t.channel.toUpperCase()} {FORMAT_BY_ID[t.format].label}</th>)}
+            <th>#</th><th>{tl("Frequency")}</th>
+            {enabledTraces.map(({ t, i }) => <th key={i} style={{ color: t.color }}>TR{i + 1} {t.channel.toUpperCase()} {tl(FORMAT_BY_ID[t.format].label)}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -36,7 +38,7 @@ export function MarkerTable() {
             const isDelta = ref && mi !== deltaRef;
             return (
               <tr key={mi} className={mi === activeMarker ? "active" : ""} onClick={() => set({ activeMarker: mi })} style={{ cursor: "pointer" }}>
-                <td>{deltaRef === mi ? "Δref" : `M${mi + 1}`}{m.tracking ? " ⟳" : ""}</td>
+                <td>{deltaRef === mi ? tl("Δref") : `M${mi + 1}`}{m.tracking ? " ⟳" : ""}</td>
                 <td>{isDelta ? `Δ ${si(data[idx].f - data[ri].f, "Hz")}` : fmtHz(data[idx].f)}</td>
                 {enabledTraces.map(({ t, i }) => {
                   const v = values[i];

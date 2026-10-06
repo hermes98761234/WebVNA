@@ -3,6 +3,7 @@ import { useStore, set, updateTrace, get } from "../store";
 import { FORMAT_BY_ID } from "../lib/formats";
 import type { Series } from "../display";
 import type { TraceScale } from "../store";
+import { useT } from "../i18n";
 
 /** Next value in the 1-2-5 sequence up (dir = 1) or down (dir = −1). */
 export function stepScale(v: number, dir: 1 | -1): number {
@@ -34,6 +35,7 @@ export function adjustScale(series: Series[], ti: number, kind: "zoomIn" | "zoom
 
 /** On-chart scale controls for the active rectangular trace, plus mouse-wheel zoom on the chart. */
 export function ScaleTools({ series, target }: { series: Series[]; target: RefObject<HTMLDivElement | null> }) {
+  const tl = useT();
   const traces = useStore((s) => s.traces);
   const active = useStore((s) => s.activeTrace);
   const rect = traces.map((t, i) => ({ t, i })).filter(({ t }) => t.enabled && !FORMAT_BY_ID[t.format].circular);
@@ -55,15 +57,15 @@ export function ScaleTools({ series, target }: { series: Series[]; target: RefOb
   if (!cur) return null;
   const { t, i } = cur;
   return (
-    <div className="scale-tools" role="group" aria-label="Trace scale">
-      <select aria-label="Trace to scale" value={i} onChange={(e) => set({ activeTrace: +e.target.value })} style={{ color: t.color }}>
-        {rect.map(({ t: x, i: k }) => <option key={k} value={k}>TR{k + 1} {FORMAT_BY_ID[x.format].label}</option>)}
+    <div className="scale-tools" role="group" aria-label={tl("Trace scale")}>
+      <select aria-label={tl("Trace to scale")} value={i} onChange={(e) => set({ activeTrace: +e.target.value })} style={{ color: t.color }}>
+        {rect.map(({ t: x, i: k }) => <option key={k} value={k}>TR{k + 1} {tl(FORMAT_BY_ID[x.format].label)}</option>)}
       </select>
-      <button className="small" title="Zoom out (scale/div up) · wheel down" onClick={() => adjustScale(series, i, "zoomOut")}>−</button>
-      <button className="small" title="Zoom in (scale/div down) · wheel up" onClick={() => adjustScale(series, i, "zoomIn")}>+</button>
-      <button className="small" title="Move trace up · Shift+wheel" onClick={() => adjustScale(series, i, "up")}>▲</button>
-      <button className="small" title="Move trace down · Shift+wheel" onClick={() => adjustScale(series, i, "down")}>▼</button>
-      <button className={"small" + (t.scale.auto ? " on" : "")} title="Auto scale" onClick={() => adjustScale(series, i, "auto")}>Auto</button>
+      <button className="small" title={tl("Zoom out (scale/div up) · wheel down")} onClick={() => adjustScale(series, i, "zoomOut")}>−</button>
+      <button className="small" title={tl("Zoom in (scale/div down) · wheel up")} onClick={() => adjustScale(series, i, "zoomIn")}>+</button>
+      <button className="small" title={tl("Move trace up · Shift+wheel")} onClick={() => adjustScale(series, i, "up")}>▲</button>
+      <button className="small" title={tl("Move trace down · Shift+wheel")} onClick={() => adjustScale(series, i, "down")}>▼</button>
+      <button className={"small" + (t.scale.auto ? " on" : "")} title={tl("Auto scale")} onClick={() => adjustScale(series, i, "auto")}>{tl("Auto")}</button>
     </div>
   );
 }

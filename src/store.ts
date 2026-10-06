@@ -10,6 +10,7 @@ import { DEFAULT_TDR, type TdrSettings } from "./lib/tdr";
 import type { Dut } from "./lib/mock";
 import type { Complex } from "./lib/complex";
 import type { SmithReadout } from "./display";
+import type { Lang } from "./i18n";
 
 export type ConnStatus = "disconnected" | "connecting" | "connected";
 export type SweepMode = "linear" | "log" | "cw";
@@ -55,6 +56,7 @@ export interface CalWork {
 }
 
 export interface State {
+  lang: Lang;
   // connection
   status: ConnStatus;
   linkKind: string;
@@ -125,6 +127,7 @@ const defaultMarkers = (): Marker[] =>
   Array.from({ length: MARKER_COUNT }, (_, i) => ({ enabled: i === 0, f: 0, trace: 0, tracking: i === 0 ? "min" : null }));
 
 export const initialState: State = {
+  lang: "en",
   status: "disconnected", linkKind: "", info: null, serial: "", vbat: null, simDut: "antenna",
   start: 300e6, stop: 600e6, points: 201, sweepMode: "linear", cwFreq: 435e6, swAverage: 1, ifAverage: 1, powerHf: 3, powerLf: 1, channelsMode: 0, deviceCal: false,
   running: false, continuous: false, progress: 0, sweepCount: 0, lastSweepMs: 0, raw: [], data: [], frozen: false,
@@ -138,7 +141,7 @@ export const initialState: State = {
 const PERSIST: (keyof State)[] = [
   "start", "stop", "points", "sweepMode", "cwFreq", "swAverage", "ifAverage", "powerHf", "powerLf", "channelsMode", "deviceCal",
   "kit", "enhancedResponse", "correction", "traces", "markers", "tdr", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut",
-  "calEnabled", "autoSaveName",
+  "calEnabled", "autoSaveName", "lang",
 ];
 const STORAGE_KEY = "webvna.settings.v1";
 
@@ -188,5 +191,5 @@ export function setTraceFormat(i: number, format: FormatId) {
 
 export function resetSettings() {
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-  set({ ...initialState, status: get().status, info: get().info, linkKind: get().linkKind });
+  set({ ...initialState, lang: get().lang, status: get().status, info: get().info, linkKind: get().linkKind });
 }

@@ -4,11 +4,13 @@ import { search, nearestIndex, type SearchMode } from "../lib/analysis";
 import { FORMAT_BY_ID, groupDelay, traceValues } from "../lib/formats";
 import { restartIfRunning, recompute } from "../controller";
 import { traceData } from "../display";
+import { useT } from "../i18n";
 
 const SEARCH: [SearchMode | "-", string][] = [["-", "No tracking"], ["max", "Max"], ["min", "Min"], ["peak_left", "Peak ◀"], ["peak_right", "Peak ▶"], ["valley_left", "Valley ◀"], ["valley_right", "Valley ▶"]];
 
 export function MarkersPanel() {
   const s = useStore();
+  const tl = useT();
   const m = s.markers[s.activeMarker];
   const d = s.data;
 
@@ -54,50 +56,50 @@ export function MarkersPanel() {
           ))}
         </div>
       </Section>
-      <Section title={`Marker ${s.activeMarker + 1}`}>
+      <Section title={tl("Marker {0}", s.activeMarker + 1)}>
         <div className="row">
-          <label>Enabled</label>
-          <input type="checkbox" checked={m.enabled} onChange={(e) => updateMarker(s.activeMarker, { enabled: e.target.checked })} aria-label="Marker enabled" />
+          <label>{tl("Enabled")}</label>
+          <input type="checkbox" checked={m.enabled} onChange={(e) => updateMarker(s.activeMarker, { enabled: e.target.checked })} aria-label={tl("Marker enabled")} />
         </div>
-        <div className="row"><label>Frequency</label><FreqInput value={m.f} onChange={(v) => updateMarker(s.activeMarker, { f: v, tracking: null, enabled: true })} ariaLabel="Marker frequency" /></div>
+        <div className="row"><label>{tl("Frequency")}</label><FreqInput value={m.f} onChange={(v) => updateMarker(s.activeMarker, { f: v, tracking: null, enabled: true })} ariaLabel="Marker frequency" /></div>
         <div className="row">
-          <label>Search on</label>
-          <Select value={m.trace} ariaLabel="Marker trace" options={s.traces.map((t, i) => [i, `TR${i + 1} ${t.channel.toUpperCase()} ${FORMAT_BY_ID[t.format].label}`] as [number, string])} onChange={(v) => updateMarker(s.activeMarker, { trace: v })} />
-        </div>
-        <div className="row">
-          <label>Tracking</label>
-          <Select value={m.tracking ?? "-"} ariaLabel="Tracking" options={SEARCH} onChange={(v) => { updateMarker(s.activeMarker, { tracking: v === "-" ? null : v }); setTimeout(recompute, 0); }} />
+          <label>{tl("Search on")}</label>
+          <Select value={m.trace} ariaLabel="Marker trace" options={s.traces.map((t, i) => [i, `TR${i + 1} ${t.channel.toUpperCase()} ${tl(FORMAT_BY_ID[t.format].label)}`] as [number, string])} onChange={(v) => updateMarker(s.activeMarker, { trace: v })} />
         </div>
         <div className="row">
-          <label>Search</label>
-          <button className="small" onClick={() => doSearch("max")}>Max</button>
-          <button className="small" onClick={() => doSearch("min")}>Min</button>
-          <button className="small" onClick={() => doSearch("peak_left")}>◀ Peak</button>
-          <button className="small" onClick={() => doSearch("peak_right")}>Peak ▶</button>
-          <button className="small" onClick={() => doSearch("valley_left")}>◀ Valley</button>
-          <button className="small" onClick={() => doSearch("valley_right")}>Valley ▶</button>
+          <label>{tl("Tracking")}</label>
+          <Select value={m.tracking ?? "-"} ariaLabel="Tracking" options={SEARCH.map(([v, l]) => [v, tl(l)] as [SearchMode | "-", string])} onChange={(v) => { updateMarker(s.activeMarker, { tracking: v === "-" ? null : v }); setTimeout(recompute, 0); }} />
         </div>
         <div className="row">
-          <label>Step</label>
-          <button className="small" onClick={() => { const i = nearestIndex(d, m.f); if (d[i - 1]) updateMarker(s.activeMarker, { f: d[i - 1].f, tracking: null }); }}>◀ point</button>
-          <button className="small" onClick={() => { const i = nearestIndex(d, m.f); if (d[i + 1]) updateMarker(s.activeMarker, { f: d[i + 1].f, tracking: null }); }}>point ▶</button>
+          <label>{tl("Search")}</label>
+          <button className="small" onClick={() => doSearch("max")}>{tl("Max")}</button>
+          <button className="small" onClick={() => doSearch("min")}>{tl("Min")}</button>
+          <button className="small" onClick={() => doSearch("peak_left")}>{tl("◀ Peak")}</button>
+          <button className="small" onClick={() => doSearch("peak_right")}>{tl("Peak ▶")}</button>
+          <button className="small" onClick={() => doSearch("valley_left")}>{tl("◀ Valley")}</button>
+          <button className="small" onClick={() => doSearch("valley_right")}>{tl("Valley ▶")}</button>
+        </div>
+        <div className="row">
+          <label>{tl("Step")}</label>
+          <button className="small" onClick={() => { const i = nearestIndex(d, m.f); if (d[i - 1]) updateMarker(s.activeMarker, { f: d[i - 1].f, tracking: null }); }}>{tl("◀ point")}</button>
+          <button className="small" onClick={() => { const i = nearestIndex(d, m.f); if (d[i + 1]) updateMarker(s.activeMarker, { f: d[i + 1].f, tracking: null }); }}>{tl("point ▶")}</button>
         </div>
       </Section>
       <Section title="Operations">
         <div className="grid3">
-          <button className="small" onClick={() => op("start")}>→ Start</button>
-          <button className="small" onClick={() => op("stop")}>→ Stop</button>
-          <button className="small" onClick={() => op("center")}>→ Center</button>
-          <button className="small" onClick={() => op("span")} title="Span between this marker and the delta reference (or the centre)">→ Span</button>
-          <button className="small" onClick={() => op("edelay")} title="Add the group delay at the marker to the electrical delay">→ E-delay</button>
+          <button className="small" onClick={() => op("start")}>{tl("→ Start")}</button>
+          <button className="small" onClick={() => op("stop")}>{tl("→ Stop")}</button>
+          <button className="small" onClick={() => op("center")}>{tl("→ Center")}</button>
+          <button className="small" onClick={() => op("span")} title={tl("Span between this marker and the delta reference (or the centre)")}>{tl("→ Span")}</button>
+          <button className="small" onClick={() => op("edelay")} title={tl("Add the group delay at the marker to the electrical delay")}>{tl("→ E-delay")}</button>
         </div>
       </Section>
       <Section title="Delta">
         <div className="row">
           <button className={"small" + (s.deltaRef === s.activeMarker ? " on" : "")} onClick={() => set({ deltaRef: s.deltaRef === s.activeMarker ? null : s.activeMarker })}>
-            {s.deltaRef === s.activeMarker ? "Clear reference" : `Use M${s.activeMarker + 1} as Δ reference`}
+            {s.deltaRef === s.activeMarker ? tl("Clear reference") : tl("Use M{0} as Δ reference", s.activeMarker + 1)}
           </button>
-          <button className="small danger" onClick={() => set({ markers: s.markers.map((x) => ({ ...x, enabled: false })), deltaRef: null })}>All off</button>
+          <button className="small danger" onClick={() => set({ markers: s.markers.map((x) => ({ ...x, enabled: false })), deltaRef: null })}>{tl("All off")}</button>
         </div>
       </Section>
     </div>

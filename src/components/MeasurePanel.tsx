@@ -5,6 +5,7 @@ import { cableAnalysis, crystalAnalysis, filterAnalysis, lcMatch, lcResonator, n
 import { impedance, swr } from "../lib/formats";
 import { C } from "../lib/complex";
 import { fmtHz, si } from "../lib/units";
+import { useT, translate, type Lang } from "../i18n";
 
 const MODES: [MeasureMode, string, string][] = [
   ["off", "Off", ""],
@@ -20,13 +21,14 @@ const MODES: [MeasureMode, string, string][] = [
 export function MeasurePanel() {
   const mode = useStore((s) => s.measure);
   const vf = useStore((s) => s.measureVf);
+  const t = useT();
   return (
     <div>
       <Section title="Measure">
-        <Select value={mode} ariaLabel="Measurement" options={MODES.map(([v, l]) => [v, l] as [MeasureMode, string])} onChange={(v) => set({ measure: v })} />
-        <p className="hint">{MODES.find((m) => m[0] === mode)?.[2]}</p>
-        {mode === "cable" && <div className="row"><label>Velocity factor</label><Num value={vf} min={0.1} max={1} step={0.01} onChange={(v) => set({ measureVf: v })} /></div>}
-        <p className="hint">Results are shown under the charts and update with every sweep.</p>
+        <Select value={mode} ariaLabel="Measurement" options={MODES.map(([v, l]) => [v, t(l)] as [MeasureMode, string])} onChange={(v) => set({ measure: v })} />
+        <p className="hint">{t(MODES.find((m) => m[0] === mode)?.[2] ?? "")}</p>
+        {mode === "cable" && <div className="row"><label>{t("Velocity factor")}</label><Num value={vf} min={0.1} max={1} step={0.01} onChange={(v) => set({ measureVf: v })} /></div>}
+        <p className="hint">{t("Results are shown under the charts and update with every sweep.")}</p>
       </Section>
     </div>
   );
@@ -39,18 +41,21 @@ export function AnalysisBox() {
   const vf = useStore((s) => s.measureVf);
   const markers = useStore((s) => s.markers);
   const activeMarker = useStore((s) => s.activeMarker);
+  const lang = useStore((s) => s.lang);
+  const t = useT();
   const mf = markers[activeMarker]?.f ?? 0;
 
   const content = useMemo(() => {
-    if (!data.length) return <p className="hint">No data yet.</p>;
+    const tr = (s: string, ...a: (string | number)[]) => translate(lang as Lang, s, ...a);
+    if (!data.length) return <p className="hint">{tr("No data yet.")}</p>;
     const band = swrBandwidth(data);
     const best = band ? data[band.best] : null;
     const zb = best ? impedance(best.s11, "s11") : null;
     const summary = best && zb && (
       <div className="kv" style={{ marginBottom: 8 }}>
-        <span>Best match</span><span>{fmtHz(best.f)} · VSWR {swr(best.s11).toFixed(3)} · {zb[0].toFixed(1)} {zb[1] >= 0 ? "+" : "−"} j{Math.abs(zb[1]).toFixed(1)} Ω</span>
-        <span>VSWR &lt; 2</span><span>{band?.bw ? `${fmtHz(band.low!)} – ${fmtHz(band.high!)} (${si(band.bw, "Hz")}, ${band.pct!.toFixed(2)} %)` : "none in this sweep"}</span>
-        <span>Return loss</span><span>{(-20 * Math.log10(Math.max(C.abs(best.s11), 1e-12))).toFixed(2)} dB · mismatch loss {(-10 * Math.log10(1 - Math.min(C.abs(best.s11), 0.9999) ** 2)).toFixed(3)} dB</span>
+        <span>{tr("Best match")}</span><span>{fmtHz(best.f)} · {tr("VSWR {0}", swr(best.s11).toFixed(3))} · {zb[0].toFixed(1)} {zb[1] >= 0 ? "+" : "−"} j{Math.abs(zb[1]).toFixed(1)} Ω</span>
+        <span>{tr("VSWR < 2")}</span><span>{band?.bw ? `${fmtHz(band.low!)} – ${fmtHz(band.high!)} (${si(band.bw, "Hz")}, ${band.pct!.toFixed(2)} %)` : tr("none in this sweep")}</span>
+        <span>{tr("Return loss")}</span><span>{tr("{0} dB · mismatch loss {1} dB", (-20 * Math.log10(Math.max(C.abs(best.s11), 1e-12))).toFixed(2), (-10 * Math.log10(1 - Math.min(C.abs(best.s11), 0.9999) ** 2)).toFixed(3))}</span>
       </div>
     );
     let extra: React.ReactNode = null;
@@ -60,77 +65,77 @@ export function AnalysisBox() {
       const sols = lcMatch(z, p.f);
       extra = (
         <>
-          <p className="hint">At M{activeMarker + 1} {fmtHz(p.f)}: Z = {z[0].toFixed(2)} {z[1] >= 0 ? "+" : "−"} j{Math.abs(z[1]).toFixed(2)} Ω</p>
+          <p className="hint">{tr("At M{0} {1}: Z = {2} {3} j{4} Ω", activeMarker + 1, fmtHz(p.f), z[0].toFixed(2), z[1] >= 0 ? "+" : "−", Math.abs(z[1]).toFixed(2))}</p>
           {sols.length ? (
-            <table className="data"><thead><tr><th>Topology</th><th>Source shunt</th><th>Series</th><th>Load shunt</th></tr></thead>
+            <table className="data"><thead><tr><th>{tr("Topology")}</th><th>{tr("Source shunt")}</th><th>{tr("Series")}</th><th>{tr("Load shunt")}</th></tr></thead>
               <tbody>{sols.map((x, i) => <tr key={i}><td>{x.topology}</td><td>{x.source}</td><td>{x.series}</td><td>{x.load}</td></tr>)}</tbody></table>
-          ) : <p className="hint">No L-network solution (R ≤ 0).</p>}
+          ) : <p className="hint">{tr("No L-network solution (R ≤ 0).")}</p>}
         </>
       );
     } else if (mode === "resonance") {
       const r = resonances(data);
       extra = r.length ? (
-        <table className="data"><thead><tr><th>Frequency</th><th>Type</th><th>R</th></tr></thead>
-          <tbody>{r.slice(0, 20).map((x, i) => <tr key={i}><td>{fmtHz(x.f)}</td><td>{x.kind}</td><td>{x.r.toFixed(2)} Ω</td></tr>)}</tbody></table>
-      ) : <p className="hint">No reactance zero crossing in this sweep.</p>;
+        <table className="data"><thead><tr><th>{tr("Frequency")}</th><th>{tr("Type")}</th><th>R</th></tr></thead>
+          <tbody>{r.slice(0, 20).map((x, i) => <tr key={i}><td>{fmtHz(x.f)}</td><td>{tr(x.kind)}</td><td>{x.r.toFixed(2)} Ω</td></tr>)}</tbody></table>
+      ) : <p className="hint">{tr("No reactance zero crossing in this sweep.")}</p>;
     } else if (mode === "cable") {
       const r = cableAnalysis(data, vf);
       extra = r && (
         <div className="kv">
-          <span>Physical length</span><span>{r.physicalLength.toFixed(3)} m (VF {vf})</span>
-          <span>Electrical length</span><span>{r.electricalLength.toFixed(3)} m</span>
-          <span>One-way delay</span><span>{si(r.delay, "s")}</span>
-          <span>Loss (mid band)</span><span>{r.lossDb.toFixed(3)} dB · {r.lossDbPer100m.toFixed(2)} dB/100 m</span>
+          <span>{tr("Physical length")}</span><span>{tr("{0} m (VF {1})", r.physicalLength.toFixed(3), vf)}</span>
+          <span>{tr("Electrical length")}</span><span>{r.electricalLength.toFixed(3)} m</span>
+          <span>{tr("One-way delay")}</span><span>{si(r.delay, "s")}</span>
+          <span>{tr("Loss (mid band)")}</span><span>{tr("{0} dB · {1} dB/100 m", r.lossDb.toFixed(3), r.lossDbPer100m.toFixed(2))}</span>
         </div>
       );
     } else if (mode === "filter") {
       const r = filterAnalysis(data);
       extra = r && (
         <div className="kv">
-          <span>Type</span><span>{r.type}</span>
-          <span>Peak</span><span>{fmtHz(r.peakF)} · IL {r.insertionLoss.toFixed(2)} dB</span>
-          {r.center && <><span>Centre (−3 dB)</span><span>{fmtHz(r.center)}</span></>}
-          {r.low3 && <><span>Lower −3 dB</span><span>{fmtHz(r.low3)}</span></>}
-          {r.high3 && <><span>Upper −3 dB</span><span>{fmtHz(r.high3)}</span></>}
-          {r.bw3 && <><span>BW −3 dB</span><span>{si(r.bw3, "Hz")}</span></>}
-          {r.bw6 && <><span>BW −6 dB</span><span>{si(r.bw6, "Hz")}</span></>}
-          {r.bw60 && <><span>BW −60 dB</span><span>{si(r.bw60, "Hz")}</span></>}
+          <span>{tr("Type")}</span><span>{tr(r.type)}</span>
+          <span>{tr("Peak")}</span><span>{tr("{0} · IL {1} dB", fmtHz(r.peakF), r.insertionLoss.toFixed(2))}</span>
+          {r.center && <><span>{tr("Centre (−3 dB)")}</span><span>{fmtHz(r.center)}</span></>}
+          {r.low3 && <><span>{tr("Lower −3 dB")}</span><span>{fmtHz(r.low3)}</span></>}
+          {r.high3 && <><span>{tr("Upper −3 dB")}</span><span>{fmtHz(r.high3)}</span></>}
+          {r.bw3 && <><span>{tr("BW −3 dB")}</span><span>{si(r.bw3, "Hz")}</span></>}
+          {r.bw6 && <><span>{tr("BW −6 dB")}</span><span>{si(r.bw6, "Hz")}</span></>}
+          {r.bw60 && <><span>{tr("BW −60 dB")}</span><span>{si(r.bw60, "Hz")}</span></>}
           {r.q && <><span>Q</span><span>{r.q.toFixed(2)}</span></>}
-          {r.shapeFactor && <><span>Shape factor 60/6</span><span>{r.shapeFactor.toFixed(2)}</span></>}
+          {r.shapeFactor && <><span>{tr("Shape factor 60/6")}</span><span>{r.shapeFactor.toFixed(2)}</span></>}
         </div>
       );
     } else if (mode === "serieslc" || mode === "shuntlc") {
       const r = lcResonator(data, mode === "serieslc" ? "series" : "shunt");
       extra = r ? (
         <div className="kv">
-          <span>Resonance</span><span>{fmtHz(r.f0)}</span>
+          <span>{tr("Resonance")}</span><span>{fmtHz(r.f0)}</span>
           <span>R</span><span>{r.r.toFixed(3)} Ω</span>
           <span>L</span><span>{si(r.l, "H")}</span>
           <span>C</span><span>{si(r.c, "F")}</span>
           <span>Q</span><span>{r.q.toFixed(1)}</span>
-          <span>BW −3 dB</span><span>{si(r.bw, "Hz")}</span>
+          <span>{tr("BW −3 dB")}</span><span>{si(r.bw, "Hz")}</span>
         </div>
-      ) : <p className="hint">The −3 dB points must be inside the sweep.</p>;
+      ) : <p className="hint">{tr("The −3 dB points must be inside the sweep.")}</p>;
     } else if (mode === "xtal") {
       const r = crystalAnalysis(data);
       extra = r ? (
         <div className="kv">
           <span>fs</span><span>{fmtHz(r.fs, 6)}</span>
-          <span>fp</span><span>{r.fp ? fmtHz(r.fp, 6) : "outside sweep"}</span>
+          <span>fp</span><span>{r.fp ? fmtHz(r.fp, 6) : tr("outside sweep")}</span>
           <span>Rm</span><span>{r.rm.toFixed(2)} Ω</span>
           <span>Lm</span><span>{si(r.lm, "H")}</span>
           <span>Cm</span><span>{si(r.cm, "F")}</span>
           <span>Cp</span><span>{r.cp ? si(r.cp, "F") : "—"}</span>
           <span>Q</span><span>{r.q.toFixed(0)}</span>
         </div>
-      ) : <p className="hint">Sweep narrowly around the series resonance (the −3 dB points must be inside the sweep).</p>;
+      ) : <p className="hint">{tr("Sweep narrowly around the series resonance (the −3 dB points must be inside the sweep).")}</p>;
     }
     return <>{summary}{extra}</>;
-  }, [data, mode, vf, mf, activeMarker]);
+  }, [data, mode, vf, mf, activeMarker, lang]);
 
   return (
     <div className="box">
-      <h3>Analysis{mode !== "off" ? ` · ${MODES.find((m) => m[0] === mode)?.[1]}` : ""}</h3>
+      <h3>{t("Analysis")}{mode !== "off" ? ` · ${t(MODES.find((m) => m[0] === mode)?.[1] ?? "")}` : ""}</h3>
       {content}
     </div>
   );

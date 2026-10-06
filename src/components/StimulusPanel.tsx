@@ -3,6 +3,7 @@ import { FreqInput, Num, Section, Select, Field } from "./inputs";
 import { restartIfRunning } from "../controller";
 import { MIN_HZ } from "../lib/protocol";
 import { fmtHz } from "../lib/units";
+import { useT } from "../i18n";
 
 export const BANDS: [string, number, number][] = [
   ["160 m", 1.8e6, 2.0e6], ["80 m", 3.5e6, 4.0e6], ["60 m", 5.3e6, 5.4e6], ["40 m", 7.0e6, 7.3e6], ["30 m", 10.1e6, 10.15e6],
@@ -17,6 +18,7 @@ const POINTS = [11, 51, 101, 201, 401, 801, 1001, 1601, 2001, 4001, 10001, 20001
 
 export function StimulusPanel() {
   const s = useStore();
+  const t = useT();
   const maxHz = s.info?.maxHz ?? 6.3e9;
   const maxPts = s.info?.maxPoints || 65535;
   const apply = (patch: Partial<typeof s>) => { set(patch); restartIfRunning(); };
@@ -37,10 +39,10 @@ export function StimulusPanel() {
           <Field label="Center"><FreqInput value={center} onChange={(v) => setRange(v - span / 2, v + span / 2)} ariaLabel="Center frequency" /></Field>
           <Field label="Span"><FreqInput value={span} onChange={(v) => setRange(center - v / 2, center + v / 2)} ariaLabel="Span" /></Field>
         </div>
-        <p className="hint">Type values like 435M, 1.2G or 500k. Step {fmtHz(step)}. Range {fmtHz(MIN_HZ)} – {fmtHz(maxHz)}.</p>
+        <p className="hint">{t("Type values like 435M, 1.2G or 500k. Step {0}. Range {1} – {2}.", fmtHz(step), fmtHz(MIN_HZ), fmtHz(maxHz))}</p>
         <div className="row">
-          <button className="small" onClick={() => setRange(center - span, center + span)}>Zoom out ×2</button>
-          <button className="small" onClick={() => setRange(center - span / 4, center + span / 4)}>Zoom in ×2</button>
+          <button className="small" onClick={() => setRange(center - span, center + span)}>{t("Zoom out ×2")}</button>
+          <button className="small" onClick={() => setRange(center - span / 4, center + span / 4)}>{t("Zoom in ×2")}</button>
           <button className="small" onClick={() => setRange(s.start - span / 4, s.stop - span / 4)}>◀</button>
           <button className="small" onClick={() => setRange(s.start + span / 4, s.stop + span / 4)}>▶</button>
         </div>
@@ -49,24 +51,24 @@ export function StimulusPanel() {
         <div className="grid2">
           <Field label="Points">
             <Select value={POINTS.includes(s.points) ? s.points : -1} ariaLabel="Points"
-              options={[...POINTS.filter((p) => p <= maxPts).map((p) => [p, String(p)] as [number, string]), [-1, "Custom…"]]}
+              options={[...POINTS.filter((p) => p <= maxPts).map((p) => [p, String(p)] as [number, string]), [-1, t("Custom…")]]}
               onChange={(v) => { if (v > 0) apply({ points: v }); }} />
           </Field>
           <Field label="Custom points"><Num value={s.points} min={2} max={maxPts} onChange={(v) => apply({ points: Math.round(v) })} ariaLabel="Custom points" /></Field>
           <Field label="Mode">
-            <Select value={s.sweepMode} ariaLabel="Sweep mode" options={[["linear", "Linear"], ["log", "Logarithmic"], ["cw", "CW (zero span)"]]}
+            <Select value={s.sweepMode} ariaLabel="Sweep mode" options={[["linear", t("Linear")], ["log", t("Logarithmic")], ["cw", t("CW (zero span)")]]}
               onChange={(v) => apply({ sweepMode: v })} />
           </Field>
           <Field label="Sweep averaging">
-            <Select value={s.swAverage} ariaLabel="Software averaging" options={[1, 2, 4, 8, 16, 32].map((n) => [n, n === 1 ? "Off" : `${n} sweeps`] as [number, string])}
+            <Select value={s.swAverage} ariaLabel="Software averaging" options={[1, 2, 4, 8, 16, 32].map((n) => [n, n === 1 ? t("Off") : t("{0} sweeps", n)] as [number, string])}
               onChange={(v) => apply({ swAverage: v })} />
           </Field>
         </div>
         {s.sweepMode === "cw" && (
-          <div className="row"><label>CW frequency</label><FreqInput value={s.cwFreq} onChange={(v) => apply({ cwFreq: v })} ariaLabel="CW frequency" /></div>
+          <div className="row"><label>{t("CW frequency")}</label><FreqInput value={s.cwFreq} onChange={(v) => apply({ cwFreq: v })} ariaLabel="CW frequency" /></div>
         )}
-        {s.sweepMode === "log" && <p className="hint">The device sweeps linearly; log sweeps are made from short linear segments and take longer.</p>}
-        {s.points > 1024 && <p className="hint">More than 1024 points are swept in 1024-point segments.</p>}
+        {s.sweepMode === "log" && <p className="hint">{t("The device sweeps linearly; log sweeps are made from short linear segments and take longer.")}</p>}
+        {s.points > 1024 && <p className="hint">{t("More than 1024 points are swept in 1024-point segments.")}</p>}
       </Section>
       <Section title="Band presets">
         <div className="grid3">
@@ -74,7 +76,7 @@ export function StimulusPanel() {
             <button key={name} className="small" onClick={() => {
               const m = (b - a) * 0.1;
               setRange(a - m, Math.min(b + m, maxHz));
-            }} title={`${fmtHz(a)} – ${fmtHz(b)}`}>{name}</button>
+            }} title={`${fmtHz(a)} – ${fmtHz(b)}`}>{t(name)}</button>
           ))}
         </div>
       </Section>

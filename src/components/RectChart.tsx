@@ -7,16 +7,18 @@ import { FORMAT_BY_ID } from "../lib/formats";
 import { restartIfRunning } from "../controller";
 import { ChartTools } from "./ChartTools";
 import { ScaleTools } from "./ScaleTools";
+import { useT, tr } from "../i18n";
 
 const DIV_Y = 8, DIV_X = 10;
 const M = { l: 62, r: 58, t: 40, b: 56 };
 
 export function RectChart() {
   const s = useStore();
-  const { data, traces, activeTrace, memories, refs, tdr, markers, activeMarker, deltaRef, sweepMode } = s;
+  const tl = useT();
+  const { data, traces, activeTrace, memories, refs, tdr, markers, activeMarker, deltaRef, sweepMode, lang } = s;
   const { series, xKind } = useMemo(() => rectSeries(s),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, traces, activeTrace, memories, refs, tdr]);
+    [data, traces, activeTrace, memories, refs, tdr, lang]);
   const [hover, setHover] = useState<number | null>(null);
   const [zoom, setZoom] = useState<[number, number] | null>(null);
   const drag = useRef<"marker" | "zoom" | null>(null);
@@ -60,7 +62,7 @@ export function RectChart() {
 
     if (!series.length) {
       ctx.fillStyle = fg; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(data.length ? "No rectangular traces enabled." : "Connect and press Sweep (or use the simulator).", M.l + pw / 2, M.t + ph / 2);
+      ctx.fillText(data.length ? tr("No rectangular traces enabled.") : tr("Connect and press Sweep (or use the simulator)."), M.l + pw / 2, M.t + ph / 2);
       return;
     }
     const yToPx = (se: Series, v: number) => M.t + ph - ((v - se.scale.ref) / se.scale.perDiv + se.scale.refPos) * (ph / DIV_Y);
@@ -117,7 +119,7 @@ export function RectChart() {
     let lx = M.l, ly = 10;
     for (const se of series) {
       const num = (v: number) => (se.unit === "dB" || se.unit === "°" ? `${+v.toFixed(3)}${se.unit}` : se.unit ? si(v, se.unit, 3) : `${+v.toPrecision(4)}`);
-      const txt = tdr.enabled ? se.label : `${se.label}  ${num(se.scale.perDiv)}/  ref ${num(se.scale.ref)}`;
+      const txt = tdr.enabled ? se.label : `${se.label}  ${num(se.scale.perDiv)}/  ${tr("ref {0}", num(se.scale.ref))}`;
       const tw = ctx.measureText(txt).width + 28;
       if (lx + tw > w - 80 && lx > M.l) { lx = M.l; ly += 14; }
       if (ly > 24) break;
@@ -161,7 +163,7 @@ export function RectChart() {
         while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (se.x[mid] <= hover) lo = mid; else hi = mid; }
         const v = se.y[Math.abs(se.x[lo] - hover) <= Math.abs(se.x[hi] - hover) ? lo : hi];
         const t = traces[se.traceIndex];
-        lines.push(tdr.enabled ? `${se.unit ? si(v, se.unit) : v.toFixed(4)}` : `${t.channel.toUpperCase()} ${FORMAT_BY_ID[t.format].label}: ${valueText(t.format, v)}`);
+        lines.push(tdr.enabled ? `${se.unit ? si(v, se.unit) : v.toFixed(4)}` : `${t.channel.toUpperCase()} ${tr(FORMAT_BY_ID[t.format].label)}: ${valueText(t.format, v)}`);
         cols.push(se.color);
       }
       const bw = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 14, bh = lines.length * 15 + 8;
@@ -177,7 +179,7 @@ export function RectChart() {
       ctx.fillStyle = cssVar("--accent"); ctx.globalAlpha = 0.15;
       ctx.fillRect(Math.min(a, b), M.t, Math.abs(b - a), ph); ctx.globalAlpha = 1;
     }
-  }, [series, markers, activeMarker, deltaRef, hover, zoom, xr, activeTrace, tdr.enabled]);
+  }, [series, markers, activeMarker, deltaRef, hover, zoom, xr, activeTrace, tdr.enabled, lang]);
 
   const xAt = (e: React.PointerEvent) => {
     const c = canvas.current!;
@@ -216,7 +218,7 @@ export function RectChart() {
         onPointerLeave={() => { if (!drag.current) setHover(null); }}
         onPointerCancel={() => { drag.current = null; setZoom(null); setHover(null); }}
         onDoubleClick={() => set((st) => ({ traces: st.traces.map((t) => ({ ...t, scale: { ...t.scale, auto: true } })) }))}
-        aria-label="Rectangular chart. Drag to move the active marker, Shift-drag to zoom, double-click to auto-scale."
+        aria-label={tl("Rectangular chart. Drag to move the active marker, Shift-drag to zoom, double-click to auto-scale.")}
       />
     </div>
   );

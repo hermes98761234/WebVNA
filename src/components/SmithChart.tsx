@@ -7,11 +7,13 @@ import { C, type Complex } from "../lib/complex";
 import { fmtHz } from "../lib/units";
 import { nearestIndex } from "../lib/analysis";
 import { ChartTools } from "./ChartTools";
+import { useT, tr } from "../i18n";
 
 /** Smith chart (impedance or admittance grid) or polar chart, for traces in SMITH / POLAR format. */
 export function SmithChart() {
   const s = useStore();
-  const { data, traces, memories, refs, markers, activeMarker, smithAdmittance, activeTrace, smithReadout } = s;
+  const tl = useT();
+  const { data, traces, memories, refs, markers, activeMarker, smithAdmittance, activeTrace, smithReadout, lang } = s;
   const circ = traces.map((t, i) => ({ t, i })).filter(({ t }) => t.enabled && FORMAT_BY_ID[t.format].circular);
   const polar = circ.length > 0 && circ.every(({ t }) => t.format === "polar");
   const wrap = useRef<HTMLDivElement>(null);
@@ -75,7 +77,7 @@ export function SmithChart() {
       }
     }
     if (!circ.length) {
-      ctx.textBaseline = "middle"; ctx.fillText("Set a trace to SMITH or POLAR format.", cx, cy + r / 2);
+      ctx.textBaseline = "middle"; ctx.fillText(tr("Set a trace to SMITH or POLAR format."), cx, cy + r / 2);
       return;
     }
     // traces + overlays
@@ -116,7 +118,7 @@ export function SmithChart() {
     });
     ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     lines.forEach((l, i) => { ctx.fillStyle = l.color; ctx.fillText(l.text, 8, 8 + i * 15); });
-  }, [data, traces, memories, refs, markers, activeMarker, smithAdmittance, activeTrace, polar, smithReadout]);
+  }, [data, traces, memories, refs, markers, activeMarker, smithAdmittance, activeTrace, polar, smithReadout, lang]);
 
   const pick = (e: React.PointerEvent) => {
     const c = canvas.current!;
@@ -136,9 +138,9 @@ export function SmithChart() {
       <ChartTools target={wrap} canvas={canvas} name={polar ? "polar" : "smith"} />
       {!polar && (
         <div style={{ position: "absolute", left: 8, bottom: 6, zIndex: 2 }}>
-          <button className={"small" + (smithAdmittance ? " on" : "")} onClick={() => set({ smithAdmittance: !smithAdmittance })} title="Show admittance grid">Y grid</button>{" "}
-          <select aria-label="Smith marker readout" value={smithReadout} onChange={(e) => set({ smithReadout: e.target.value as SmithReadout })} style={{ fontSize: 12, padding: "1px 4px" }}>
-            {SMITH_READOUTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          <button className={"small" + (smithAdmittance ? " on" : "")} onClick={() => set({ smithAdmittance: !smithAdmittance })} title={tl("Show admittance grid")}>{tl("Y grid")}</button>{" "}
+          <select aria-label={tl("Smith marker readout")} value={smithReadout} onChange={(e) => set({ smithReadout: e.target.value as SmithReadout })} style={{ fontSize: 12, padding: "1px 4px" }}>
+            {SMITH_READOUTS.map(([v, l]) => <option key={v} value={v}>{tl(l)}</option>)}
           </select>
         </div>
       )}
@@ -146,7 +148,7 @@ export function SmithChart() {
         onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); drag.current = true; pick(e); }}
         onPointerMove={(e) => { if (drag.current) pick(e); }}
         onPointerUp={() => { drag.current = false; }}
-        aria-label="Smith chart. Click or drag to move the active marker." />
+        aria-label={tl("Smith chart. Click or drag to move the active marker.")} />
     </div>
   );
 }
