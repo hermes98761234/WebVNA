@@ -8,7 +8,7 @@ import { restartIfRunning } from "../controller";
 import { ChartTools } from "./ChartTools";
 
 const DIV_Y = 8, DIV_X = 10;
-const M = { l: 62, r: 14, t: 40, b: 26 };
+const M = { l: 62, r: 58, t: 40, b: 26 };
 
 export function RectChart() {
   const s = useStore();
@@ -71,7 +71,19 @@ export function RectChart() {
       const txt = lab.unit === "dB" || lab.unit === "°" ? `${+v.toFixed(3)}` : lab.unit ? si(v, lab.unit, 3) : `${+v.toPrecision(4)}`;
       ctx.fillText(txt, M.l - 5, M.t + ph - (ph * i) / DIV_Y);
     }
+    // right axis: the first other primary trace with a different scale
+    const lab2 = series.find((se) => se.primary && se !== lab && (se.unit !== lab.unit || se.scale.perDiv !== lab.scale.perDiv || se.scale.ref !== lab.scale.ref));
+    if (lab2) {
+      ctx.fillStyle = lab2.color; ctx.textAlign = "left";
+      for (let i = 0; i <= DIV_Y; i++) {
+        const v = lab2.scale.ref + (i - lab2.scale.refPos) * lab2.scale.perDiv;
+        const txt = lab2.unit === "dB" || lab2.unit === "°" ? `${+v.toFixed(3)}` : lab2.unit ? si(v, lab2.unit, 3) : `${+v.toPrecision(4)}`;
+        ctx.fillText(txt, M.l + pw + 5, M.t + ph - (ph * i) / DIV_Y);
+      }
+      ctx.textAlign = "right";
+    }
     // reference marker ▶ at refPos
+    ctx.fillStyle = lab.color;
     const ry = M.t + ph - lab.scale.refPos * (ph / DIV_Y);
     ctx.beginPath(); ctx.moveTo(M.l - 1, ry - 4); ctx.lineTo(M.l + 5, ry); ctx.lineTo(M.l - 1, ry + 4); ctx.fill();
     // VSWR 2 line on SWR traces
@@ -91,7 +103,7 @@ export function RectChart() {
       const step = Math.max(1, Math.floor(se.x.length / (pw * 2)));
       for (let i = 0; i < se.x.length; i += step) {
         const v = se.y[i];
-        if (!isFinite(v)) { started = false; continue; }
+        if (Number.isNaN(v)) { started = false; continue; } // ±Infinity (e.g. SWR at |Γ| ≥ 1) is clipped at the edge
         const x = xToPx(se.x[i]), y = Math.max(-1e4, Math.min(1e4, yToPx(se, v)));
         if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
       }

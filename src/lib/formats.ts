@@ -83,9 +83,10 @@ export function groupDelay(data: SweepPoint[], key: Channel = "s21"): number[] {
   });
 }
 
+/** VSWR; Infinity when |Γ| ≥ 1 (possible with a calibration that doesn't fit the setup). */
 export function swr(g: Complex): number {
-  const m = Math.min(C.abs(g), 0.999999);
-  return (1 + m) / (1 - m);
+  const m = C.abs(g);
+  return m >= 1 ? Infinity : (1 + m) / (1 - m);
 }
 
 /** Scalar value of one point in a rectangular format. */

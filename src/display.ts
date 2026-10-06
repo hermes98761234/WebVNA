@@ -6,6 +6,9 @@ import { timeDomain } from "./lib/tdr";
 import { niceStep, si } from "./lib/units";
 import type { State, Trace, TraceScale } from "./store";
 
+/** SWR above this is "fully mismatched" (|Γ| > 0.935); auto scale doesn't zoom out further. */
+export const SWR_AUTO_CAP = 30;
+
 export interface Series {
   traceIndex: number;
   label: string;
@@ -31,9 +34,12 @@ export function traceData(s: State, t: Trace): SweepPoint[] {
   return s.data;
 }
 
-export function autoScale(y: ArrayLike<number>, divisions = 8): TraceScale {
+/** Auto scale over finite values; `floor` anchors the bottom (SWR = 1), `cap` limits the top. */
+export function autoScale(y: ArrayLike<number>, divisions = 8, opt: { floor?: number; cap?: number } = {}): TraceScale {
   let lo = Infinity, hi = -Infinity;
   for (let i = 0; i < y.length; i++) { const v = y[i]; if (isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+  if (opt.floor != null && isFinite(lo)) lo = opt.floor;
+  if (opt.cap != null) hi = Math.min(hi, opt.cap);
   if (!isFinite(lo)) return { auto: true, perDiv: 1, ref: 0, refPos: 0 };
   if (hi - lo < 1e-15) { const d = Math.abs(hi) * 0.1 || 1; lo -= d; hi += d; }
   let perDiv = niceStep((hi - lo) / divisions);
@@ -70,7 +76,7 @@ export function rectSeries(s: State): { series: Series[]; xKind: "freq" | "dista
         const y = traceValues(set.data, t.channel, t.format);
         const x = Float64Array.from(set.data, (p) => p.f);
         const fd = FORMAT_BY_ID[t.format];
-        const scale = t.scale.auto ? autoScale(y) : t.scale;
+        const scale = t.scale.auto ? (t.format === "swr" ? autoScale(y, 8, { floor: 1, cap: SWR_AUTO_CAP }) : autoScale(y)) : t.scale;
         series.push({ traceIndex: ti, label: `${t.channel.toUpperCase()} ${fd.label}${t.math === "subtract" ? ` /${t.memory}` : ""}${set.label}`, color: set.color, x, y, unit: fd.unit, dashed: set.dashed, scale, primary: set.primary });
       }
     }
@@ -80,11 +86,11 @@ export function rectSeries(s: State): { series: Series[]; xKind: "freq" | "dista
 
 export function valueText(fmt: FormatId, v: number): string {
   const d = FORMAT_BY_ID[fmt];
-  if (!isFinite(v)) return "—";
+  if (Number.isNaN(v) || (!isFinite(v) && fmt !== "swr")) return "—";
   switch (fmt) {
     case "logmag": case "s21gain": case "rl": case "mismatch": return `${v.toFixed(2)} dB`;
     case "phase": case "uphase": case "zphase": return `${v.toFixed(2)}°`;
-    case "swr": return v.toFixed(3);
+    case "swr": return isFinite(v) ? v.toFixed(3) : "∞ (|Γ| ≥ 1)";
     case "linear": case "real": case "imag": return v.toFixed(4);
     case "q": return v.toFixed(2);
     default: return si(v, d.unit);

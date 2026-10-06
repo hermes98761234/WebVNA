@@ -42,7 +42,7 @@ export const MARKER_COUNT = 8;
 
 const scaleFor = (format: FormatId): TraceScale => {
   const d = FORMAT_BY_ID[format];
-  return { auto: format !== "logmag" && format !== "phase" && format !== "swr", perDiv: d.perDiv, ref: d.ref, refPos: d.refPos };
+  return { auto: format !== "logmag" && format !== "phase", perDiv: d.perDiv, ref: d.ref, refPos: d.refPos };
 };
 
 export const newTrace = (channel: Channel, format: FormatId, color: string, enabled = true): Trace =>
