@@ -34,8 +34,8 @@ export function StimulusPanel() {
     <div>
       <Section title="Frequency">
         <div className="grid2">
-          <Field label="Start"><FreqInput value={s.start} onChange={(v) => setRange(v, Math.max(v, s.stop))} ariaLabel="Start frequency" /></Field>
-          <Field label="Stop"><FreqInput value={s.stop} onChange={(v) => setRange(Math.min(v, s.start), v)} ariaLabel="Stop frequency" /></Field>
+          <Field label="Start"><FreqInput value={s.start} onChange={(v) => setRange(v, s.stop)} ariaLabel="Start frequency" /></Field>
+          <Field label="Stop"><FreqInput value={s.stop} onChange={(v) => setRange(s.start, v)} ariaLabel="Stop frequency" /></Field>
           <Field label="Center"><FreqInput value={center} onChange={(v) => setRange(v - span / 2, v + span / 2)} ariaLabel="Center frequency" /></Field>
           <Field label="Span"><FreqInput value={span} onChange={(v) => setRange(center - v / 2, center + v / 2)} ariaLabel="Span" /></Field>
         </div>
@@ -43,8 +43,8 @@ export function StimulusPanel() {
         <div className="row">
           <button className="small" onClick={() => setRange(center - span, center + span)}>{t("Zoom out ×2")}</button>
           <button className="small" onClick={() => setRange(center - span / 4, center + span / 4)}>{t("Zoom in ×2")}</button>
-          <button className="small" onClick={() => setRange(s.start - span / 4, s.stop - span / 4)}>◀</button>
-          <button className="small" onClick={() => setRange(s.start + span / 4, s.stop + span / 4)}>▶</button>
+          <button className="small" onClick={() => setRange(s.start - span / 4, s.stop - span / 4)} aria-label={t("Shift range down")}>◀</button>
+          <button className="small" onClick={() => setRange(s.start + span / 4, s.stop + span / 4)} aria-label={t("Shift range up")}>▶</button>
         </div>
       </Section>
       <Section title="Sweep">

@@ -31,7 +31,8 @@ export function Toolbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: bo
   // Keyboard: Space = single sweep, R = run/stop.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.closest("input, select, textarea")) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return; // Ctrl/Cmd+R = reload, not run
+      if ((e.target as HTMLElement)?.closest("input, select, textarea, button, a, [contenteditable]")) return;
       if (e.key === " " && connected) { e.preventDefault(); void sweepOnce(); }
       if ((e.key === "r" || e.key === "R") && connected) { if (continuous) stop(); else void startContinuous(); }
     };

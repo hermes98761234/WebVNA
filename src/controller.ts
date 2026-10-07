@@ -190,8 +190,9 @@ async function acquire(): Promise<SweepPoint[]> {
   const n = Math.max(1, s.swAverage);
   let acc: SweepPoint[] | null = null;
   abort = new AbortController();
+  const segs = segments(); // snapshot: every averaging pass must sweep the same grid
   for (let k = 0; k < n; k++) {
-    const d = await vna.sweepSegments(segments(), {
+    const d = await vna.sweepSegments(segs, {
       signal: abort.signal,
       onProgress: (p) => set({ progress: (k + p) / n }),
     }, 1024);
@@ -215,7 +216,7 @@ export async function sweepOnce() {
   if (!vna || get().running) return;
   set({ running: true, progress: 0 });
   try { await sweepCycle(); }
-  catch (e) { if (!(e instanceof AbortError)) log(tr("Sweep failed: {0}", errMsg(e)), "error"); }
+  catch (e) { if (!(e instanceof AbortError) && vna) log(tr("Sweep failed: {0}", errMsg(e)), "error"); } // vna === null: disconnected mid-sweep
   finally { set({ running: false }); }
 }
 
@@ -226,7 +227,7 @@ export async function startContinuous() {
     try { await sweepCycle(); }
     catch (e) {
       if (e instanceof AbortError && get().continuous) continue; // stimulus changed: restart the sweep
-      if (!(e instanceof AbortError)) log(tr("Sweep failed: {0}", errMsg(e)), "error");
+      if (!(e instanceof AbortError) && vna) log(tr("Sweep failed: {0}", errMsg(e)), "error");
       break;
     }
     await new Promise((r) => setTimeout(r, 0));
@@ -382,8 +383,8 @@ export function loadCalSlot(name: string) {
     const t = localStorage.getItem(CAL_PREFIX + name);
     if (!t) return;
     const cal = parseCal(t);
+    setCalibration(cal); // computes the terms first: a kit that fails never reaches the store
     set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
-    setCalibration(cal);
     log(tr("Calibration \"{0}\" loaded.", name));
   } catch (e) { log(tr("Couldn't load calibration: {0}", errMsg(e)), "error"); }
 }
@@ -410,8 +411,8 @@ export async function importTouchstoneFile(file: File) {
 export async function importCalFile(file: File) {
   try {
     const cal = parseCal(await file.text());
-    set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
     setCalibration(cal);
+    set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
     log(tr("Calibration loaded from {0}.", file.name));
   } catch (e) { log(tr("Import {0}: {1}", file.name, errMsg(e)), "error"); }
 }

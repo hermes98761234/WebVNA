@@ -25,7 +25,7 @@ export interface TouchstoneFile { ports: number; z0: number; data: SweepPoint[];
 export function parseTouchstone(text: string, nameHint = ""): TouchstoneFile {
   let unit = 1e9, fmt = "MA", z0 = 50, ports = /\.s2p$/i.test(nameHint) ? 2 : /\.s1p$/i.test(nameHint) ? 1 : 0;
   const comments: string[] = [];
-  const nums: number[] = [];
+  const rows: number[][] = [];
   for (const raw of text.split(/\r?\n/)) {
     const ci = raw.indexOf("!");
     if (ci >= 0) comments.push(raw.slice(ci + 1).trim());
@@ -37,33 +37,30 @@ export function parseTouchstone(text: string, nameHint = ""): TouchstoneFile {
         const k = t[i];
         if (k === "HZ") unit = 1; else if (k === "KHZ") unit = 1e3; else if (k === "MHZ") unit = 1e6; else if (k === "GHZ") unit = 1e9;
         else if (k === "RI" || k === "MA" || k === "DB") fmt = k;
-        else if (k === "R" && t[i + 1]) { z0 = parseFloat(t[i + 1]); i++; }
+        else if (k === "R" && t[i + 1]) { const r = parseFloat(t[i + 1]); if (Number.isFinite(r) && r > 0) z0 = r; i++; }
       }
       continue;
     }
     if (line.startsWith("[")) continue; // Touchstone 2.0 keywords
-    for (const tok of line.split(/\s+/)) nums.push(parseFloat(tok));
+    rows.push(line.split(/\s+/).map(parseFloat));
   }
-  if (!ports) {
-    // Guess from the row width of the data: 3 → 1-port, 9 → 2-port.
-    const firstRow = text.split(/\r?\n/).map((l) => l.split("!")[0].trim()).find((l) => l && !l.startsWith("#") && !l.startsWith("["));
-    ports = firstRow && firstRow.split(/\s+/).length >= 9 ? 2 : 1;
-  }
+  // Guess from the row width of the data: 3 → 1-port, 9 → 2-port.
+  if (!ports) ports = rows[0] && rows[0].length >= 9 ? 2 : 1;
   const per = ports === 1 ? 3 : 9;
   const toC = (a: number, b: number): Complex => {
     if (fmt === "RI") return [a, b];
     const m = fmt === "DB" ? Math.pow(10, a / 20) : a;
     return C.polar(m, (b * Math.PI) / 180);
   };
-  const data: SweepPoint[] = [];
-  for (let i = 0; i + per <= nums.length; i += per) {
-    const f = nums[i] * unit;
-    const s11 = toC(nums[i + 1], nums[i + 2]);
-    const s21 = ports === 2 ? toC(nums[i + 3], nums[i + 4]) : ([0, 0] as Complex);
-    // Renormalise to 50 Ω if the file uses another reference impedance.
-    const s11n = z0 === Z0 ? s11 : (() => { const z = impedance(s11, "s11", z0); return C.div(C.sub(z, [Z0, 0]), C.add(z, [Z0, 0])); })();
-    data.push({ f, s11: s11n, s21 });
-  }
+  const data: SweepPoint[] = rows.map((r, i) => {
+    if (r.length !== per || !r.every(Number.isFinite)) throw new Error(`Malformed data row ${i + 1}: expected ${per} numbers.`);
+    const f = r[0] * unit;
+    const s11 = toC(r[1], r[2]);
+    const s21 = ports === 2 ? toC(r[3], r[4]) : ([0, 0] as Complex);
+    // Renormalise to 50 Ω if the file uses another reference impedance (an exact open stays Γ = 1).
+    const s11n = z0 === Z0 ? s11 : (() => { const z = impedance(s11, "s11", z0); return isFinite(z[0]) ? C.div(C.sub(z, [Z0, 0]), C.add(z, [Z0, 0])) : ([1, 0] as Complex); })();
+    return { f, s11: s11n, s21 };
+  });
   if (!data.length) throw new Error("No data points found in the Touchstone file.");
   return { ports, z0, data, comments };
 }

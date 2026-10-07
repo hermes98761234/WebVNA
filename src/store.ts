@@ -145,13 +145,26 @@ const PERSIST: (keyof State)[] = [
 ];
 const STORAGE_KEY = "webvna.settings.v1";
 
+/** Cheap shape check of a persisted value against its default: same type, arrays of the same length, objects with the default's keys. */
+function shapeOk(v: unknown, d: unknown): boolean {
+  if (Array.isArray(d)) return Array.isArray(v) && v.length === d.length && v.every((x, i) => shapeOk(x, d[i]));
+  if (d === null || typeof d === "string") return v === null || typeof v === "string"; // Trace.memory, Marker.tracking are string | null either way
+  if (typeof d === "object") return v !== null && typeof v === "object" && !Array.isArray(v) && Object.keys(d).every((k) => shapeOk((v as Record<string, unknown>)[k], (d as Record<string, unknown>)[k]));
+  if (typeof d === "number") return typeof v === "number" && Number.isFinite(v);
+  return typeof v === typeof d;
+}
+
 function loadPersisted(): Partial<State> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const o = JSON.parse(raw);
     const out: Partial<State> = {};
-    for (const k of PERSIST) if (k in o) (out as Record<string, unknown>)[k] = o[k];
+    for (const k of PERSIST) {
+      if (!(k in o) || !shapeOk(o[k], initialState[k])) continue; // malformed values fall back to the defaults
+      if (k === "traces" && !(o[k] as Trace[]).every((t) => t.format in FORMAT_BY_ID)) continue;
+      (out as Record<string, unknown>)[k] = o[k];
+    }
     return out;
   } catch { return {}; }
 }
@@ -190,6 +203,6 @@ export function setTraceFormat(i: number, format: FormatId) {
 }
 
 export function resetSettings() {
-  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem("webvna.activecal"); } catch { /* ignore */ } // the cal is reset too; keep storage in step
   set({ ...initialState, lang: get().lang, status: get().status, info: get().info, linkKind: get().linkKind });
 }
