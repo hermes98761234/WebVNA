@@ -233,7 +233,9 @@ export function serializeCal(cal: CalData): string { return JSON.stringify({ for
 
 export function parseCal(text: string): CalData {
   const o = JSON.parse(text);
-  if (o.format !== "webvna-cal" || !Array.isArray(o.freqs)) throw new Error("Not a WebVNA calibration file.");
+  if (o?.format !== "webvna-cal" || !Array.isArray(o.freqs) || !o.freqs.length) throw new Error("Not a WebVNA calibration file.");
+  for (const k of ["open", "short", "load", "isolation", "thru", "thru11"])
+    if (o[k] != null && (!Array.isArray(o[k]) || o[k].length !== o.freqs.length)) throw new Error("Not a WebVNA calibration file.");
   delete o.format; delete o.version;
   return { kit: IDEAL_KIT, enhancedResponse: false, ...o } as CalData;
 }

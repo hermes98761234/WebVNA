@@ -8,7 +8,7 @@ import { formatValue, groupDelay, impedance, swr, traceValues } from "./formats"
 import { parseTouchstone, writeCsv, writeTouchstone } from "./touchstone";
 import { cableAnalysis, crystalAnalysis, filterAnalysis, lcMatch, resonances, search, swrBandwidth } from "./analysis";
 import { DEFAULT_TDR, fft, timeDomain } from "./tdr";
-import { parseHz, si } from "./units";
+import { parseHz, parseSI, si } from "./units";
 import { stepScale } from "../components/ScaleTools";
 
 const S = 300e6, E = 600e6, N = 301;
@@ -244,5 +244,11 @@ describe("files and units", () => {
     expect(parseHz("1.2 GHz")).toBe(1.2e9);
     expect(parseHz("500k")).toBe(500e3);
     expect(si(1.5e-9, "H")).toBe("1.500 nH");
+    expect(parseHz("1e400")).toBeNull();
+    expect(parseSI("1e400n")).toBeNull();
+  });
+  it("rejects malformed calibration files", () => {
+    for (const t of ["null", '{"format":"webvna-cal","freqs":[]}', '{"format":"webvna-cal","freqs":[1,2],"open":[[0,0]]}'])
+      expect(() => parseCal(t)).toThrow("Not a WebVNA calibration file.");
   });
 });
