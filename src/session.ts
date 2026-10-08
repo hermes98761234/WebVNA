@@ -109,13 +109,15 @@ export function importSession(input: unknown): void {
   }
   const twoPort = isObj(o.twoPort) && o.twoPort.result ? checkSweep(o.twoPort.result, "2-port result") : null;
 
-  const settings = mergePersisted(o.settings);
-  delete settings.lang; // the interface language is a personal choice
-  const bad = (k: string, ok: (v: number) => boolean) => k in settings && !(isNum((settings as Record<string, unknown>)[k]) && ok((settings as Record<string, number>)[k]));
+  // structural checks on the raw settings (clear errors); mergePersisted then drops/repairs any individual invalid value
+  const rawSettings = o.settings;
+  const bad = (k: string, ok: (v: number) => boolean) => k in rawSettings && !(isNum(rawSettings[k]) && ok(rawSettings[k] as number));
   if (bad("start", (v) => v > 0) || bad("stop", (v) => v > 0) || bad("cwFreq", (v) => v > 0) || bad("points", (v) => Number.isInteger(v) && v >= 1))
     throw new Error(tr("Session: the sweep settings are invalid."));
-  if (settings.traces !== undefined && (!Array.isArray(settings.traces) || !settings.traces.every((t) => isObj(t))))
+  if (rawSettings.traces !== undefined && (!Array.isArray(rawSettings.traces) || !rawSettings.traces.every((t) => isObj(t))))
     throw new Error(tr("Session: the trace settings are invalid."));
+  const settings = mergePersisted(rawSettings);
+  delete settings.lang; // the interface language is a personal choice
   stop();
   setCalibration(cal); // first: it forces calEnabled, which the settings then override
   if (cal) set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
@@ -202,12 +204,19 @@ export async function decodeShare(token: string): Promise<SharedView> {
   return { settings: o.settings, data: checkSweep(data, "shared data") };
 }
 
+/** Only the display subset a link may carry: never device settings, calibration, kit or simulator choices. */
+export function sharedSettings(settings: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of SHARE_SETTINGS) if (k in settings) out[k] = settings[k];
+  return out;
+}
+
 /** Show a shared measurement without connecting: it is already corrected, so calibration, fixture and gate are switched off. */
 export function applySharedView(v: SharedView) {
   stop();
   const s = get();
   set({
-    ...mergePersisted(v.settings), calEnabled: false, fixture: { ...s.fixture, enabled: false }, gate: { ...s.gate, enabled: false },
+    ...mergePersisted(sharedSettings(v.settings)), calEnabled: false, fixture: { ...s.fixture, enabled: false }, gate: { ...s.gate, enabled: false },
     raw: v.data, frozen: false, twoPort: { fwd: null, rev: null, result: null },
   });
   recompute();

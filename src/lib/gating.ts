@@ -61,12 +61,12 @@ function gateAt(t: number, g: GateSettings): number {
  * No separate gate-response normalisation: an all-pass gate returns the input exactly, and the window floor (≈0.2 at the
  * band edges) bounds noise amplification, so the outer ~10% of the band is less accurate.
  */
-function gateChannel(data: SweepPoint[], ch: "s11" | "s21", g: GateSettings): Complex[] {
+function gateChannel(data: SweepPoint[], ch: "s11" | "s21" | "s12" | "s22", g: GateSettings): Complex[] {
   const N = data.length, M = fftSize(N);
   const d = (data[N - 1].f - data[0].f) / (N - 1);
   const w = Array.from({ length: N }, (_, k) => kaiser((2 * k) / (N - 1) - 1, PRE_BETA));
   const re = new Float64Array(M), im = new Float64Array(M);
-  for (let k = 0; k < N; k++) { re[k] = data[k][ch][0] * w[k]; im[k] = data[k][ch][1] * w[k]; }
+  for (let k = 0; k < N; k++) { re[k] = data[k][ch]![0] * w[k]; im[k] = data[k][ch]![1] * w[k]; }
   fft(re, im, true);
   for (let n = 0; n < M; n++) {
     const a = gateAt((n < M / 2 ? n : n - M) / (M * d), g);
@@ -80,5 +80,13 @@ export function applyGate(data: SweepPoint[], g: GateSettings): SweepPoint[] {
   if (!g.enabled || !(g.span > 0) || !canGate(data)) return data;
   const s11 = g.channel !== "s21" ? gateChannel(data, "s11", g) : null;
   const s21 = g.channel !== "s11" ? gateChannel(data, "s21", g) : null;
-  return data.map((p, i) => ({ f: p.f, s11: s11 ? s11[i] : p.s11, s21: s21 ? s21[i] : p.s21 }));
+  // with both channels selected the reverse parameters are gated the same way (s22 like s11, s12 like s21), when present
+  const both = g.channel === "both";
+  const s22 = both && data.every((p) => p.s22) ? gateChannel(data, "s22", g) : null;
+  const s12 = both && data.every((p) => p.s12) ? gateChannel(data, "s12", g) : null;
+  return data.map((p, i) => ({
+    ...p,
+    s11: s11 ? s11[i] : p.s11, s21: s21 ? s21[i] : p.s21,
+    ...(s22 ? { s22: s22[i] } : {}), ...(s12 ? { s12: s12[i] } : {}),
+  }));
 }

@@ -19,6 +19,9 @@ export interface SweepOptions {
 
 export class AbortError extends Error { constructor() { super("Sweep stopped."); this.name = "AbortError"; } }
 
+/** Integer clamped to [lo, hi]; NaN → lo. */
+const clampInt = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(n) || 0));
+
 export class LiteVNA implements VnaDriver {
   readonly link: LinkBase;
   info: DeviceInfo | null = null;
@@ -91,11 +94,11 @@ export class LiteVNA implements VnaDriver {
   }
   setPower({ lf, hf }: { lf?: number; hf?: number }) {
     return this.exclusive(async () => {
-      if (lf != null) await this.write1(REG.POWER_LF, lf);
-      if (hf != null) await this.write1(REG.POWER_HF, hf);
+      if (lf != null) await this.write1(REG.POWER_LF, clampInt(lf, 0, 3));
+      if (hf != null) await this.write1(REG.POWER_HF, clampInt(hf, 0, 3));
     });
   }
-  setChannels(mode: number) { return this.exclusive(() => this.write1(REG.CHANNELS, mode)); }
+  setChannels(mode: number) { return this.exclusive(() => this.write1(REG.CHANNELS, clampInt(mode, 0, 2))); }
   setTime(unixSeconds = Math.floor(Date.now() / 1000)) { return this.exclusive(() => this.write4(REG.UNIX_TIME, unixSeconds)); }
   readVbat() { return this.exclusive(async () => (await this.read2(REG.VBAT_MV)) / 1000); }
   setDataMode(mode: number) { return this.exclusive(() => this.write1(REG.DATA_MODE, mode)); }

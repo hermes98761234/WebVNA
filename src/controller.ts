@@ -165,7 +165,7 @@ export async function applyDeviceSettings() {
     if (c.power) await vna.setPower?.({ hf: s.powerHf, lf: s.powerLf });
     if (c.channels) await vna.setChannels?.(s.channelsMode);
     if (c.deviceCal) await vna.setDataMode?.(s.deviceCal ? DATA_MODE.DEVICE_CAL : DATA_MODE.USB);
-    else if (s.deviceCal) set({ deviceCal: false });
+    // unsupported: just don't apply it; the persisted preference is kept for devices that have the capability
   } catch (e) { log(tr("Device settings: {0}", errMsg(e)), "error"); }
 }
 
@@ -347,7 +347,7 @@ export async function measureStandard(std: Standard) {
   if (isSimulatorLink(link)) link.dut = std === "isolation" ? "isolation" : std;
   set({ running: true, progress: 0 });
   try {
-    if (get().deviceCal) await setDeviceCal(false);
+    if (get().deviceCal && vna.capabilities.deviceCal) await setDeviceCal(false);
     log(tr("Measuring {0}…", tr(std.toUpperCase())));
     const d = await acquire();
     const freqs = d.map((p) => p.f);
@@ -476,14 +476,14 @@ export function setFixture(fixture: FixtureSettings) {
 /* ------------------------------------------------------------------ two-port by flipping the DUT */
 
 /** Simulator only: present the DUT reversed (port 1 sees DUT port 2). */
-export function setSimReversed(on: boolean) { if (link instanceof MockLink) link.reversed = on; }
+export function setSimReversed(on: boolean) { if (isSimulatorLink(link)) link.reversed = on; }
 
 /** Acquire a RAW sweep of the DUT in one orientation (forward, or reversed after the user turned it around). */
 export async function measureFlip(dir: "fwd" | "rev") {
   if (!vna) { log(tr("Connect a device (or the simulator) first."), "error"); return; }
   stop();
   while (get().running) await new Promise((r) => setTimeout(r, 20));
-  if (isSimulator()) { (link as MockLink).dut = get().simDut; (link as MockLink).reversed = dir === "rev"; }
+  if (isSimulatorLink(link)) { link.dut = get().simDut; link.reversed = dir === "rev"; }
   set({ running: true, progress: 0 });
   try {
     const d = await acquire();
@@ -491,7 +491,7 @@ export async function measureFlip(dir: "fwd" | "rev") {
     log(dir === "fwd" ? tr("Forward sweep measured ({0} points).", d.length) : tr("Reversed sweep measured ({0} points).", d.length));
   } catch (e) { if (!(e instanceof AbortError)) log(tr("Sweep failed: {0}", errMsg(e)), "error"); }
   finally {
-    if (isSimulator()) (link as MockLink).reversed = false;
+    if (isSimulatorLink(link)) link.reversed = false;
     set({ running: false });
   }
 }
@@ -502,7 +502,7 @@ export function buildFlip() {
   const { fwd, rev } = s.twoPort;
   if (!fwd || !rev) { log(tr("Measure both orientations first."), "error"); return; }
   try {
-    const terms = s.calEnabled && !s.deviceCal ? s.terms : null;
+    const terms = s.calEnabled && !(s.deviceCal && s.capabilities?.deviceCal !== false) ? s.terms : null;
     const result = applyFixture(combineFlip(fwd, rev, terms), s.fixture);
     set({ twoPort: { fwd, rev, result } });
     log(tr("Full 2-port S-parameters built ({0} points).", result.length));

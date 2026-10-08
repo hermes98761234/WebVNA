@@ -1,6 +1,6 @@
 // Simulator: speaks the NanoVNA V1/H/H4 ChibiOS text shell ("ch> " prompt, echo, scan, capture, ...).
 import { C, type Complex } from "./complex";
-import { dutS, type Dut } from "./mock";
+import { dutS4, type Dut } from "./mock";
 import { LinkBase } from "./links";
 import { SCAN, isForbiddenShellCommand } from "./nanovna";
 
@@ -18,6 +18,8 @@ export interface MockShellOptions {
 export class MockShellLink extends LinkBase {
   kind = "Simulator (NanoVNA shell)";
   dut: Dut = "antenna";
+  /** DUT physically flipped: port 1 sees DUT port 2 (S22 / S12). Same meaning as MockLink.reversed. */
+  reversed = false;
   noise = 0.0005;
   readonly opts: Required<MockShellOptions>;
   /** Every command line received, in order. */
@@ -39,7 +41,8 @@ export class MockShellLink extends LinkBase {
   private get screen() { return this.opts.board === "H4" ? { w: 480, h: 320 } : { w: 320, h: 240 }; }
 
   private sample(f: number, ignoreCal: boolean): { s11: Complex; s21: Complex } {
-    const { s11: G, s21: S } = dutS(this.dut, f);
+    const t4 = dutS4(this.dut, f);
+    const G = this.reversed ? t4.s22 : t4.s11, S = this.reversed ? t4.s12 : t4.s21;
     let m = G, s21 = S;
     if (ignoreCal) {
       const ph = -2 * Math.PI * f * 1.2e-9;

@@ -268,19 +268,22 @@ export function parseCal(text: string): CalData {
   const o = JSON.parse(text);
   if (o.format !== "webvna-cal" || !Array.isArray(o.freqs)) throw new Error("Not a WebVNA calibration file.");
   delete o.format; delete o.version;
-  const d = o.kit?.data;
-  if (d !== undefined) {
-    if (!d || typeof d !== "object") throw new Error("Malformed calibration kit data.");
-    const finite = (a: unknown) => Number.isFinite(a);
-    for (const std of ["open", "short", "load"] as const) {
-      const e = d[std];
-      if (e === undefined) continue;
-      const bad = !e || typeof e.name !== "string" || !Array.isArray(e.freqs) || !Array.isArray(e.gamma) || !e.freqs.length ||
-        e.freqs.length !== e.gamma.length || !e.freqs.every(finite) ||
-        !e.gamma.every((v: unknown) => Array.isArray(v) && v.length === 2 && finite(v[0]) && finite(v[1]));
-      if (bad) throw new Error(`Malformed ${std} standard data in calibration file.`);
-      if (e.freqs.some((f: number, i: number) => i > 0 && f <= e.freqs[i - 1])) throw new Error(`Frequencies of ${std} standard data must increase.`);
-    }
-  }
+  validateKitData(o.kit?.data);
   return { kit: IDEAL_KIT, enhancedResponse: false, ...o } as CalData;
+}
+
+/** Validate measured-standard data of a cal kit (`kit.data`); throws on anything malformed. undefined is fine. */
+export function validateKitData(d: unknown): void {
+  if (d === undefined) return;
+  if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("Malformed calibration kit data.");
+  const finite = (a: unknown) => Number.isFinite(a);
+  for (const std of ["open", "short", "load"] as const) {
+    const e = (d as Record<string, StandardData | undefined>)[std];
+    if (e === undefined) continue;
+    const bad = !e || typeof e !== "object" || typeof e.name !== "string" || !Array.isArray(e.freqs) || !Array.isArray(e.gamma) || !e.freqs.length ||
+      e.freqs.length !== e.gamma.length || !e.freqs.every(finite) ||
+      !e.gamma.every((v: unknown) => Array.isArray(v) && v.length === 2 && finite(v[0]) && finite(v[1]));
+    if (bad) throw new Error(`Malformed ${std} standard data in calibration file.`);
+    if (e.freqs.some((f: number, i: number) => i > 0 && f <= e.freqs[i - 1])) throw new Error(`Frequencies of ${std} standard data must increase.`);
+  }
 }

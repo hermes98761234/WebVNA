@@ -27,6 +27,50 @@ describe("mergePersisted", () => {
     expect("bogus" in m).toBe(false);
   });
 
+  it("drops out-of-range and mistyped values instead of persisting them", () => {
+    const m = mergePersisted({
+      start: 5, stop: 1e12, points: 70000, cwFreq: "x", sweepMode: "bogus", swAverage: 0, ifAverage: 500, powerHf: 200, powerLf: -1, channelsMode: 7,
+      deviceCal: "yes", simModel: "evil", simDut: "evil", lang: "xx", measure: "rm -rf", smithReadout: 5, measureVf: 9, autoSaveName: 3,
+    });
+    expect(m).toEqual({});
+    const ok = mergePersisted({ points: 401, ifAverage: 80, powerHf: 0, powerLf: 3, channelsMode: 2, sweepMode: "log", simModel: "nanovna-h4", simDut: "pad", lang: "uk" });
+    expect(ok).toEqual({ points: 401, ifAverage: 80, powerHf: 0, powerLf: 3, channelsMode: 2, sweepMode: "log", simModel: "nanovna-h4", simDut: "pad", lang: "uk" });
+  });
+
+  it("repairs malformed traces, markers and nested objects", () => {
+    const m = mergePersisted({
+      traces: [{ format: "bogus", channel: "s99", color: "red;x", scale: { perDiv: -1, ref: "a" }, limits: [{ kind: "upper", f1: "x" }], memory: "Z" }, 5],
+      markers: [{ enabled: "x", f: -4, trace: 99, tracking: "weird" }, "x"],
+      tdr: 5, gate: { span: "big", channel: "s11" }, core: { turns: -1 }, correction: { s11Delay: Infinity },
+      fixture: { enabled: true, port1: [{ type: "file", op: "embed", name: "x", points: "oops" }], port2: [] },
+      kit: { open: { c0: "x" }, data: { open: { name: 1, freqs: [1], gamma: [] } } },
+    });
+    const t0 = m.traces![0], d0 = initialState.traces[0];
+    expect(t0).toEqual(d0);
+    expect(m.traces).toHaveLength(2);
+    expect(m.traces![1]).toEqual(initialState.traces[1]);
+    expect(m.markers).toHaveLength(initialState.markers.length);
+    expect(m.markers![0]).toEqual(initialState.markers[0]);
+    expect(m.tdr).toEqual(initialState.tdr);
+    expect(m.gate).toEqual({ ...initialState.gate });
+    expect(m.core).toEqual(initialState.core);
+    expect(m.correction).toEqual(initialState.correction);
+    expect(m.fixture).toEqual(initialState.fixture);
+    expect(m.kit!.open.c0).toBe(0);
+    expect(m.kit!.data).toBeUndefined();
+  });
+
+  it("rejects non-array traces/markers and non-object input", () => {
+    expect(mergePersisted({ traces: "x", markers: "x" })).toEqual({});
+    expect(mergePersisted({ traces: [] })).toEqual({});
+    expect(mergePersisted(5 as never)).toEqual({});
+  });
+
+  it("keeps a valid fixture and valid kit data", () => {
+    const fixture = { enabled: true, z0: 75, port1: [{ type: "lumped", op: "embed", kind: "series", element: "L", value: 1e-9 }, { type: "line", op: "deembed", z0: 50, lengthM: 0.1, vf: 0.7 }], port2: [] };
+    expect(mergePersisted({ fixture }).fixture).toEqual(fixture);
+  });
+
   it("mergeDefaults fills nested objects only", () => {
     expect(mergeDefaults({ a: 1, b: { c: 2, d: 3 }, e: [1] }, { b: { c: 9 }, e: [] })).toEqual({ a: 1, b: { c: 9, d: 3 }, e: [] });
   });

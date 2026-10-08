@@ -11,9 +11,9 @@ const grid = (n = 401, f0 = 1e6, f1 = 1e9) => Array.from({ length: n }, (_, i) =
 const dut = (freqs: number[]): SweepPoint[] =>
   freqs.map((f) => ({ f, s11: C.add(refl(f, 0.3, T1), refl(f, 0.2, T2)), s21: C.add(refl(f, 0.5, T1), refl(f, 0.1, T2)) }));
 const gate = (o: Partial<GateSettings>): GateSettings => ({ ...DEFAULT_GATE, enabled: true, ...o });
-const maxErr = (a: SweepPoint[], b: (f: number) => Complex, ch: "s11" | "s21" = "s11", lo = 0.1, hi = 0.9) => {
+const maxErr = (a: SweepPoint[], b: (f: number) => Complex, ch: "s11" | "s21" | "s12" | "s22" = "s11", lo = 0.1, hi = 0.9) => {
   let m = 0;
-  for (let i = Math.floor(a.length * lo); i < Math.ceil(a.length * hi); i++) m = Math.max(m, C.abs(C.sub(a[i][ch], b(a[i].f))));
+  for (let i = Math.floor(a.length * lo); i < Math.ceil(a.length * hi); i++) m = Math.max(m, C.abs(C.sub(a[i][ch]!, b(a[i].f))));
   return m;
 };
 
@@ -116,5 +116,30 @@ describe("TDR zero-padding", () => {
   });
   it("invalid padding falls back to 1", () => {
     expect(timeDomain(d, "s11", { ...DEFAULT_TDR, padding: 3 })!.value.length).toBe(512);
+  });
+});
+
+describe("gating keeps the other S-parameters", () => {
+  const full = (freqs: number[]): SweepPoint[] =>
+    freqs.map((f) => ({ ...dut([f])[0], s12: C.add(refl(f, 0.4, T1), refl(f, 0.2, T2)), s22: C.add(refl(f, 0.3, T1), refl(f, 0.3, T2)) }));
+  it("passes s12/s22 through when only one channel is gated", () => {
+    const data = full(grid());
+    const out = applyGate(data, gate({ center: T1, span: 6e-9 }));
+    expect(out[10].s12).toEqual(data[10].s12);
+    expect(out[10].s22).toEqual(data[10].s22);
+    expect(out[10].s11).not.toEqual(data[10].s11);
+  });
+  it("gates s12 and s22 too when the channel is both", () => {
+    const data = full(grid());
+    const out = applyGate(data, gate({ channel: "both", center: T1, span: 6e-9 }));
+    // the T2 echo is outside the gate: s22 (0.3@T1 + 0.3@T2) must approach 0.3@T1
+    expect(maxErr(out, (f) => refl(f, 0.3, T1), "s22")).toBeLessThan(0.05);
+    expect(maxErr(out, (f) => refl(f, 0.4, T1), "s12")).toBeLessThan(0.05);
+    expect(out[10].f).toBe(data[10].f);
+  });
+  it("leaves 2-port-less data without s12/s22", () => {
+    const out = applyGate(dut(grid()), gate({ channel: "both", center: T1, span: 6e-9 }));
+    expect(out[5].s12).toBeUndefined();
+    expect(out[5].s22).toBeUndefined();
   });
 });

@@ -81,3 +81,9 @@ export function parseLimits(text: string): LimitSegment[] {
     return seg;
   });
 }
+
+/** Validate untrusted limit segments (persisted settings, session files, links); null when malformed. */
+export function checkLimits(v: unknown): LimitSegment[] | null {
+  if (!Array.isArray(v) || v.length > 1000) return null;
+  try { return parseLimits(JSON.stringify({ format: "webvna-limits", version: 1, segments: v })); } catch { return null; }
+}

@@ -357,3 +357,19 @@ describe("NanoVNA V1/H shell driver (simulator)", () => {
     expect(link.commands.at(-1)).toBe("resume");
   });
 });
+
+describe("LiteVNA register clamping", () => {
+  it("setPower/setChannels clamp to the valid register ranges", async () => {
+    const link = new MockLink(), vna = new LiteVNA(link);
+    await vna.init();
+    await vna.setPower({ hf: 200, lf: -5 });
+    expect(link.reg[REG.POWER_HF]).toBe(3);
+    expect(link.reg[REG.POWER_LF]).toBe(0);
+    await vna.setChannels(7);
+    expect(link.reg[REG.CHANNELS]).toBe(2);
+    await vna.setChannels(NaN);
+    expect(link.reg[REG.CHANNELS]).toBe(0);
+    await vna.setPower({ hf: 3, lf: 1 });
+    await vna.setChannels(0);
+  });
+});

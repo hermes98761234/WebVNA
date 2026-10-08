@@ -74,6 +74,43 @@ describe("session files", () => {
   });
 });
 
+describe("untrusted settings", () => {
+  it("a share link cannot change device, calibration or simulator settings", () => {
+    fresh();
+    set({ powerHf: 3, ifAverage: 1, channelsMode: 0, deviceCal: false, simModel: "litevna" });
+    applySharedView({
+      settings: { start: 200e6, stop: 300e6, powerHf: 200, powerLf: 9, channelsMode: 7, ifAverage: 80, deviceCal: true, simModel: "nanovna-h", kit: { name: "x" }, lang: "uk" },
+      data: raw,
+    });
+    const s = get();
+    expect(s.start).toBe(200e6);
+    expect(s.powerHf).toBe(3); expect(s.powerLf).toBe(1); expect(s.channelsMode).toBe(0); expect(s.ifAverage).toBe(1);
+    expect(s.deviceCal).toBe(false); expect(s.simModel).toBe("litevna"); expect(s.lang).toBe("en");
+  });
+
+  it("a share link with malformed display settings cannot break the traces", () => {
+    fresh();
+    applySharedView({ settings: { traces: [{ format: "bogus" }], markers: "x", tdr: 5 }, data: raw });
+    const s = get();
+    expect(s.traces[0].format).toBe(initialState.traces[0].format);
+    expect(s.markers).toHaveLength(initialState.markers.length);
+    expect(s.tdr).toEqual(initialState.tdr);
+    expect(s.data.length).toBe(N);
+  });
+
+  it("a session file with out-of-range device values is sanitized and bad kit data is ignored", () => {
+    fresh();
+    const ok = exportSession();
+    importSession({ ...ok, settings: { ...ok.settings, powerHf: 200, channelsMode: 7, ifAverage: 9999, traces: [{ format: "bogus" }], kit: { name: "k", data: { open: { name: "o", freqs: [1], gamma: [["a"]] } } } } });
+    const s = get();
+    expect(s.powerHf).toBe(initialState.powerHf);
+    expect(s.channelsMode).toBe(0);
+    expect(s.ifAverage).toBe(1);
+    expect(s.traces[0].format).toBe(initialState.traces[0].format);
+    expect(s.kit.data).toBeUndefined();
+  });
+});
+
 describe("share links", () => {
   it("encodes and decodes a sweep at float32 precision", async () => {
     fresh();

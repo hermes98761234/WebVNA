@@ -16,6 +16,7 @@ import type { Dut } from "./lib/mock";
 import type { Complex } from "./lib/complex";
 import type { SmithReadout } from "./display";
 import { tr, type Lang } from "./i18n";
+import { sanitizePersisted } from "./validate";
 
 export type ConnStatus = "disconnected" | "connecting" | "connected";
 export type SweepMode = "linear" | "log" | "cw";
@@ -183,14 +184,13 @@ export function mergeDefaults<T>(def: T, val: unknown): T {
   return out as T;
 }
 
-/** Persisted settings → state patch, tolerating files from older versions (new fields get defaults). */
+/** Persisted settings → state patch: only known keys with valid values (old files get defaults for missing fields). */
 export function mergePersisted(o: Record<string, unknown>): Partial<State> {
-  const out: Record<string, unknown> = {};
-  for (const k of PERSIST) if (k in o) out[k] = o[k];
-  for (const k of ["tdr", "gate", "core", "correction", "kit", "fixture"] as const) if (k in out) out[k] = mergeDefaults(initialState[k], out[k]);
-  if (Array.isArray(out.traces))
-    out.traces = (out.traces as unknown[]).map((t, i) => mergeDefaults(initialState.traces[i] ?? newTrace("s11", "logmag", TRACE_COLORS[i % 4], false), t));
-  return out as Partial<State>;
+  if (!isObj(o)) return {};
+  return sanitizePersisted(o, {
+    keys: PERSIST, def: initialState, markerCount: MARKER_COUNT, markerDefaults: defaultMarkers,
+    traceDefault: (i) => initialState.traces[i] ?? newTrace("s11", "logmag", TRACE_COLORS[i % 4], false),
+  });
 }
 
 function loadPersisted(): Partial<State> {
