@@ -522,6 +522,25 @@ const UK: Record<string, string> = {
   "X/ω": "X/ω",
   "µ′": "µ′",
   "µ″": "µ″",
+  // device + scripting
+  "Connected via {0}: {1}, firmware {2} (experimental NanoVNA V1/H/H4 text protocol).": "Підключено через {0}: {1}, прошивка {2} (експериментальний текстовий протокол NanoVNA V1/H/H4).",
+  "This device can't deliver its own calibrated data.": "Цей пристрій не може віддавати власні відкалібровані дані.",
+  "Bluetooth serial module (Chrome on Android, experimental)": "Bluetooth-модуль послідовного порту (Chrome на Android, експериментально)",
+  "fw {0}": "прошивка {0}",
+  "experimental": "експериментально",
+  "NanoVNA V1/H/H4 text shell (experimental)": "Текстова оболонка NanoVNA V1/H/H4 (експериментально)",
+  "This device has no IF averaging, power or channel controls in the shell protocol. Use sweep averaging in the Stimulus tab instead.": "У протоколі оболонки цей пристрій не має керування усередненням ПЧ, потужністю чи каналами. Натомість використовуйте усереднення розгорток на вкладці «Стимул».",
+  "Simulated model": "Модель симулятора",
+  "LiteVNA (V2 protocol)": "LiteVNA (протокол V2)",
+  "NanoVNA-H (NanoVNA-D firmware)": "NanoVNA-H (прошивка NanoVNA-D)",
+  "NanoVNA-H4 (NanoVNA-D firmware)": "NanoVNA-H4 (прошивка NanoVNA-D)",
+  "NanoVNA-H (stock firmware)": "NanoVNA-H (стандартна прошивка)",
+  "Script": "Скрипт",
+  "Example": "Приклад",
+  "Run script": "Запустити скрипт",
+  "Script output": "Вивід скрипта",
+  "Output appears here.": "Вивід з'явиться тут.",
+  "The script runs here in your browser, as an async function with webvna and print() in scope. Nothing is uploaded. Only run code you trust: it can control the connected device. API: see \"Scripting API\" in the README, or type webvna in the browser console.": "Скрипт виконується тут, у вашому браузері, як асинхронна функція з webvna та print() у області видимості. Нічого не завантажується. Запускайте лише код, якому довіряєте: він може керувати підключеним пристроєм. API: розділ «Scripting API» у README або введіть webvna в консолі браузера.",
 };
 
 export { UK };

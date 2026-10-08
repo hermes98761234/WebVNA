@@ -1,7 +1,7 @@
 import { useStore, set } from "../store";
 import { FreqInput, Num, Section, Select, Field } from "./inputs";
 import { restartIfRunning } from "../controller";
-import { MIN_HZ } from "../lib/protocol";
+import { limitsOf } from "../caps";
 import { fmtHz } from "../lib/units";
 import { useT } from "../i18n";
 
@@ -20,8 +20,7 @@ const POINTS = [11, 51, 101, 201, 401, 801, 1001, 1601, 2001, 4001, 10001, 20001
 export function StimulusPanel() {
   const s = useStore();
   const t = useT();
-  const maxHz = s.info?.maxHz ?? 6.3e9;
-  const maxPts = s.info?.maxPoints || 65535;
+  const { minHz: MIN_HZ, maxHz, maxPoints: maxPts } = limitsOf(s.capabilities);
   const apply = (patch: Partial<typeof s>) => { set(patch); restartIfRunning(); };
   const center = (s.start + s.stop) / 2, span = s.stop - s.start;
   const setRange = (a: number, b: number) => {

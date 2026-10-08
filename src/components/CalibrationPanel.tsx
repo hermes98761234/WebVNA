@@ -58,7 +58,7 @@ export function CalibrationPanel() {
           <Check checked={s.calEnabled} onChange={(v) => { set({ calEnabled: v }); recompute(); }}>{t("Apply calibration")}</Check>
           <button className="small" disabled={!s.cal} onClick={() => stimulusFromCal()}>{t("Cal range → sweep")}</button>
         </div>
-        <Check checked={s.deviceCal} onChange={(v) => void setDeviceCal(v)}>{t("Use device's own calibration (data mode 3)")}</Check>
+        {(!s.capabilities || s.capabilities.deviceCal) && <Check checked={s.deviceCal} onChange={(v) => void setDeviceCal(v)}>{t("Use device's own calibration (data mode 3)")}</Check>}
       </Section>
 
       <Section title="Save / recall">

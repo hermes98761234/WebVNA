@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import type { SweepPoint } from "./lib/litevna";
 import type { DeviceInfo } from "./lib/protocol";
+import type { DriverCapabilities } from "./lib/driver";
 import { IDEAL_KIT, NO_CORRECTION, type CalData, type CalKit, type Correction, type ErrorTerms, type Standard } from "./lib/calibration";
 import type { Channel, FormatId } from "./lib/formats";
 import { FORMAT_BY_ID } from "./lib/formats";
@@ -18,6 +19,8 @@ import { tr, type Lang } from "./i18n";
 export type ConnStatus = "disconnected" | "connecting" | "connected";
 export type SweepMode = "linear" | "log" | "cw";
 export type MeasureMode = "off" | "lcmatch" | "cable" | "serieslc" | "shuntlc" | "xtal" | "filter" | "resonance" | "stats";
+export type SimModel = "litevna" | "nanovna-h" | "nanovna-h4" | "nanovna-stock";
+export const SIM_MODELS: SimModel[] = ["litevna", "nanovna-h", "nanovna-h4", "nanovna-stock"];
 export type MemorySlot = "A" | "B" | "C" | "D";
 export const MEMORY_SLOTS: MemorySlot[] = ["A", "B", "C", "D"];
 
@@ -66,9 +69,12 @@ export interface State {
   status: ConnStatus;
   linkKind: string;
   info: DeviceInfo | null;
+  /** What the connected driver supports (not persisted); null when disconnected. */
+  capabilities: DriverCapabilities | null;
   serial: string;
   vbat: number | null;
   simDut: Dut;
+  simModel: SimModel;
   // stimulus
   start: number;
   stop: number;
@@ -137,7 +143,7 @@ const defaultMarkers = (): Marker[] =>
 
 export const initialState: State = {
   lang: "en",
-  status: "disconnected", linkKind: "", info: null, serial: "", vbat: null, simDut: "antenna",
+  status: "disconnected", linkKind: "", info: null, capabilities: null, serial: "", vbat: null, simDut: "antenna", simModel: "litevna",
   start: 300e6, stop: 600e6, points: 201, sweepMode: "linear", cwFreq: 435e6, swAverage: 1, swDiscard: 0, ifAverage: 1, powerHf: 3, powerLf: 1, channelsMode: 0, deviceCal: false,
   running: false, continuous: false, progress: 0, sweepCount: 0, lastSweepMs: 0, raw: [], data: [], frozen: false,
   calWork: { freqs: null, meas: {}, thru11: null }, cal: null, terms: null, calEnabled: true, kit: IDEAL_KIT, enhancedResponse: false, correction: NO_CORRECTION,
@@ -149,7 +155,7 @@ export const initialState: State = {
 /** Keys persisted to localStorage (user settings, not data). */
 const PERSIST: (keyof State)[] = [
   "start", "stop", "points", "sweepMode", "cwFreq", "swAverage", "swDiscard", "ifAverage", "powerHf", "powerLf", "channelsMode", "deviceCal",
-  "kit", "enhancedResponse", "correction", "traces", "markers", "tdr", "gate", "core", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut",
+  "kit", "enhancedResponse", "correction", "traces", "markers", "tdr", "gate", "core", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut", "simModel",
   "calEnabled", "autoSaveName", "lang",
 ];
 const STORAGE_KEY = "webvna.settings.v1";
@@ -221,5 +227,5 @@ export function setTraceFormat(i: number, format: FormatId) {
 
 export function resetSettings() {
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-  set({ ...initialState, lang: get().lang, status: get().status, info: get().info, linkKind: get().linkKind });
+  set({ ...initialState, lang: get().lang, status: get().status, info: get().info, capabilities: get().capabilities, linkKind: get().linkKind });
 }

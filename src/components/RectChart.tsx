@@ -5,7 +5,7 @@ import { useCanvas } from "../hooks/useCanvas";
 import { fmtHz, fmtHzShort, si } from "../lib/units";
 import { FORMAT_BY_ID } from "../lib/formats";
 import { SPEED_OF_LIGHT } from "../lib/units";
-import { MIN_HZ } from "../lib/protocol";
+import { limitsOf } from "../caps";
 import { restartIfRunning } from "../controller";
 import { ChartTools } from "./ChartTools";
 import { ScaleTools } from "./ScaleTools";
@@ -289,7 +289,7 @@ export function RectChart() {
     const p = pinch.current;
     pinch.current = null;
     if (!p || p.axis !== "x" || !zoom) return;
-    const max = useStore.getState().info?.maxHz ?? 6.3e9;
+    const { minHz: MIN_HZ, maxHz: max } = limitsOf(useStore.getState().capabilities);
     let [lo, hi] = [Math.min(...zoom), Math.max(...zoom)];
     if (hi - lo < MIN_SPAN_HZ) { const c = (lo + hi) / 2; lo = c - MIN_SPAN_HZ / 2; hi = c + MIN_SPAN_HZ / 2; }
     if (lo < MIN_HZ) { hi += MIN_HZ - lo; lo = MIN_HZ; }

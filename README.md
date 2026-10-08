@@ -1,6 +1,6 @@
 # WebVNA
 
-A browser app for the **LiteVNA** (and the NanoVNA V2 family). Connect over USB, sweep from 50 kHz to 6.3 GHz, calibrate, and analyse S11/S21 on rectangular and Smith charts. It runs in Chrome or Edge with no install and no drivers.
+A browser app for the **LiteVNA** (and the NanoVNA V2 family; NanoVNA V1/-H/-H4 support is experimental). Connect over USB, sweep from 50 kHz to 6.3 GHz, calibrate, and analyse S11/S21 on rectangular and Smith charts. It runs in Chrome or Edge with no install and no drivers.
 
 **Try it now: [vkopitsa.github.io/WebVNA](https://vkopitsa.github.io/WebVNA/)** (click **Simulator** if you have no device).
 
@@ -24,7 +24,9 @@ NanoVNA-App and NanoVNA-Saver are desktop programs. WebVNA does the same job in 
 - **Analysis:** VSWR bandwidth and best match, L/C matching networks, filter (type, insertion loss, bandwidth, Q), cable, crystal and LC resonators, resonances.
 - **Time domain:** TDR/DTF with low-pass impulse/step and band-pass modes, Kaiser windows, velocity factor, distance or time axis.
 - **Files:** Touchstone `.s1p`/`.s2p` (RI/MA/DB) and CSV export/import, auto-save to a folder, chart PNG.
-- **Simulator:** a byte-level LiteVNA emulator with antenna, filter, crystal, cable, RLC and calibration-standard DUTs. Try everything without hardware.
+- **Devices:** LiteVNA / NanoVNA V2 (binary protocol) and, experimentally, NanoVNA V1 / -H / -H4 (text shell; NanoVNA-D firmware is best, stock firmware sweeps 101 points). The protocol is detected on connect, and controls the device lacks (screenshot, battery, IF averaging, power, channels, device calibration) are hidden. A Bluetooth serial module can be used where the browser supports Web Serial over Bluetooth (Chrome on Android, experimental).
+- **Simulator:** byte-level emulators of the LiteVNA and of the NanoVNA-H / -H4 shell (NanoVNA-D and stock firmware) with antenna, filter, crystal, cable, RLC and calibration-standard DUTs. Try everything without hardware.
+- **Scripting:** a `window.webvna` API and an in-app Script tab (see [Scripting API](#scripting-api)).
 - **Languages:** English and Ukrainian.
 
 ## Quick start
@@ -87,11 +89,53 @@ Issues and pull requests are welcome. A few rules:
 - Every visible string goes through `t()` / `tr()`. Add the Ukrainian entry to `src/i18n.ts`, or leave it out and say so in the PR.
 - Run `npm test`, `npm run typecheck` and `npm run lint` before opening a PR.
 
+## Scripting API
+
+Every build exposes a `window.webvna` object, and the **Script** tab runs code against it. A script is an async function body with `webvna` and `print()` in scope. It runs locally in the page, so only run code you trust: it can control the connected device. Values are plain arrays and objects.
+
+```js
+await webvna.connectSimulator({ model: "nanovna-h", dut: "antenna" }); // or: await webvna.connect() from a click handler
+webvna.setStimulus({ start: 400e6, stop: 470e6, points: 101 });         // Hz
+const data = await webvna.sweep();            // [{ f, s11: [re, im], s21: [re, im] }, ...] (calibrated)
+const swr = webvna.trace(1);                  // { format, channel, unit, freqs, values }
+print("min SWR", Math.min(...swr.values).toFixed(2));
+const off = webvna.on("sweep", (e) => print("sweep", e.count));
+webvna.run();                                 // continuous sweeping; webvna.stop() to end
+const ts = webvna.exportTouchstone(2, "RI");  // string, also exportCsv()
+```
+
+| Call | Result |
+|---|---|
+| `version` | API version string |
+| `connectSimulator({model?, dut?})`, `connect()`, `disconnect()` | model: `litevna`, `nanovna-h`, `nanovna-h4`, `nanovna-stock` |
+| `setStimulus({start, stop, points?, mode?, cwFreq?})` | clamps to the device's range, returns the applied stimulus |
+| `sweep()`, `run()`, `stop()` | `sweep()` resolves with the newly acquired, corrected points |
+| `raw()`, `data()` | last raw / calibrated sweep |
+| `markers()`, `setMarker(i, f)` | enabled markers with value at the nearest point |
+| `trace(i)` | display values of trace `i` (0-3) |
+| `limits(i?)` | pass/fail of trace `i`, or a summary of all traces with limit lines |
+| `exportTouchstone(ports, fmt)`, `exportCsv()` | file contents as strings |
+| `on("sweep", cb)` | returns an unsubscribe function; `cb({count, points, ms})` |
+| `state()`, `setState(partial)` | JSON-safe snapshot; `setState` accepts only stimulus, averaging, power, channel, display and simulator settings and throws on anything else |
+
+There is no TCP server in a browser. To drive the app from Python, use Playwright or Selenium with a Chromium browser and call `window.webvna` through `evaluate`. The simulator needs no device; a real serial device needs the port chooser, which can't be automated, so grant the port once in a persistent profile and use `window.__webvna.controller.reconnectKnown()` in a dev build.
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    page = p.chromium.launch().new_page()
+    page.goto("http://localhost:5173/")
+    page.evaluate("webvna.connectSimulator({ dut: 'antenna' })")
+    data = page.evaluate("webvna.setStimulus({ start: 400e6, stop: 470e6, points: 101 }), webvna.sweep()")
+    print(len(data), data[0]["f"])
+```
+
 ## Safety
 
 The LiteVNA protocol also exposes the bootloader's flash registers (`0xE0–0xEF`). WebVNA **never writes them**, except `0xEE` (screenshot). The driver refuses those writes in code (`isForbiddenWrite()` in `src/lib/protocol.ts`). Firmware update is deliberately not implemented; use NanoVNA-App for that.
 
-Tested on a LiteVNA 64 (hardware rev 2, firmware 2.2). Other NanoVNA V2–protocol devices should work but haven't been tested.
+Tested on a LiteVNA 64 (hardware rev 2, firmware 2.2). Other NanoVNA V2–protocol devices should work but haven't been tested. NanoVNA V1/-H/-H4 support (text shell, `src/lib/nanovna.ts`) is **experimental** and so far only exercised against the simulator. The driver refuses dangerous shell commands (`isForbiddenShellCommand()`), and the app sends `resume` on disconnect so the device screen comes back.
 
 ## Acknowledgements
 

@@ -8,6 +8,7 @@ import { MarkersPanel } from "./components/MarkersPanel";
 import { MeasurePanel, AnalysisBox } from "./components/MeasurePanel";
 import { DevicePanel } from "./components/DevicePanel";
 import { FilesPanel } from "./components/FilesPanel";
+import { ScriptPanel } from "./components/ScriptPanel";
 import { RectChart } from "./components/RectChart";
 import { SmithChart } from "./components/SmithChart";
 import { MarkerTable } from "./components/MarkerTable";
@@ -24,6 +25,7 @@ const TABS = [
   ["measure", "Measure", MeasurePanel],
   ["device", "Device", DevicePanel],
   ["files", "Files", FilesPanel],
+  ["script", "Script", ScriptPanel],
 ] as const;
 
 let booted = false;
