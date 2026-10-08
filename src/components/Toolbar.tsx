@@ -55,13 +55,13 @@ export function Toolbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: bo
         <>
           <button className="primary" disabled={status === "connecting" || !hasWebSerial()} onClick={() => connectSerial()} title={hasWebSerial() ? "" : t("Web Serial needs Chrome or Edge")}>{t("Connect")}</button>
           {hasWebSerial() && <button disabled={status === "connecting"} onClick={() => connectBluetooth()} title={t("Bluetooth serial module (Chrome on Android, experimental)")}>Bluetooth</button>}
-          {hasWebUsb() && <button disabled={status === "connecting"} onClick={() => connectUsb()}>WebUSB</button>}
+          {hasWebUsb() && <button disabled={status === "connecting"} title={t("WebUSB: LiteVNA / NanoVNA V2 over USB serial, or LibreVNA (experimental)")} onClick={() => connectUsb()}>WebUSB</button>}
           <button disabled={status === "connecting"} onClick={() => connectSimulator()}>{t("Simulator")}</button>
         </>
       ) : (
         <button onClick={() => disconnect()}>{t("Disconnect")}</button>
       )}
-      {connected && info && <span className="hint device-info">{info.model} · {caps?.protocol === "v1-shell" ? `${t("fw {0}", info.firmware ?? "?")} · ${t("experimental")}` : t("fw {0}.{1}", info.fwMajor, info.fwMinor)} · {t(linkKind)}{vbat != null ? ` · ${vbat.toFixed(2)} V` : ""}</span>}
+      {connected && info && <span className="hint device-info">{info.model} · {caps?.protocol !== "v2" ? `${t("fw {0}", info.firmware ?? "?")} · ${t("experimental")}` : t("fw {0}.{1}", info.fwMajor, info.fwMinor)} · {t(linkKind)}{vbat != null ? ` · ${vbat.toFixed(2)} V` : ""}</span>}
       {status === "connecting" && <span className="hint">{t("Connecting…")}</span>}
       <span className="spacer" />
       {calBadge}

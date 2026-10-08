@@ -2,10 +2,13 @@
 import { planSegments, AbortError, type SweepPoint } from "./lib/litevna";
 import { MockLink } from "./lib/mock";
 import { MockShellLink } from "./lib/mock-shell";
+import { MockLibreLink } from "./lib/mock-libre";
+import { LibreVNA } from "./lib/librevna";
+import { LIBRE_USB_IDS } from "./lib/libre-protocol";
 import type { VnaDriver } from "./lib/driver";
 import { createDriver } from "./lib/detect";
 import { clampPoints } from "./caps";
-import { SerialLink, UsbLink, type LinkBase } from "./lib/links";
+import { SerialLink, UsbLink, WebUsbBulkLink, type LinkBase } from "./lib/links";
 import { DATA_MODE, USB_IDS, USB_IDS_V1 } from "./lib/protocol";
 import { computeErrorTerms, parseCal, serializeCal, standardFromTouchstone, type CalData, type Standard } from "./lib/calibration";
 import { averageSweeps } from "./lib/averaging";
@@ -27,7 +30,7 @@ let abort: AbortController | null = null;
 
 export const hasWebSerial = () => typeof navigator !== "undefined" && "serial" in navigator;
 export const hasWebUsb = () => typeof navigator !== "undefined" && "usb" in navigator;
-export const isSimulator = () => link instanceof MockLink || link instanceof MockShellLink;
+export const isSimulator = () => link instanceof MockLink || link instanceof MockShellLink || link instanceof MockLibreLink;
 const ALL_USB_IDS = [...USB_IDS, ...USB_IDS_V1];
 export const BT_SPP = "00001101-0000-1000-8000-00805f9b34fb";
 
@@ -42,7 +45,7 @@ function errMsg(e: unknown) { return e instanceof Error ? e.message : String(e);
 
 /* ------------------------------------------------------------------ connection */
 
-async function attach(l: LinkBase) {
+async function attach(l: LinkBase, driver?: VnaDriver) {
   link = l;
   l.trace = (dir, bytes) => { if (get().commsMonitor) log(`${dir === "tx" ? "→" : "←"} ${hex(bytes)}`, "comms"); };
   l.onClose = () => {
@@ -53,11 +56,12 @@ async function attach(l: LinkBase) {
     set({ status: "disconnected", info: null, capabilities: null, linkKind: "", running: false });
   };
   try {
-    vna = await createDriver(l);
+    vna = driver ?? await createDriver(l);
     const info = await vna.init();
     const caps = vna.capabilities;
     set({ status: "connected", info, capabilities: caps, linkKind: l.kind, serial: "", vbat: null });
     if (caps.protocol === "v1-shell") log(tr("Connected via {0}: {1}, firmware {2} (experimental NanoVNA V1/H/H4 text protocol).", l.kind, info.model, info.firmware ?? "?"));
+    else if (caps.protocol === "libre") log(tr("Connected via {0}: {1}, firmware {2} (experimental LibreVNA protocol).", l.kind, info.model, info.firmware ?? "?"));
     else log(tr("Connected via {0}: {1}, hw rev {2}, firmware {3}.{4}", l.kind, info.model, info.hardware, info.fwMajor, info.fwMinor));
     if (info.maxPoints === 0) throw new Error(tr("The device is in DFU/bootloader mode. Restart it normally."));
     const s = get();
@@ -111,10 +115,17 @@ export async function connectUsb() {
   await disconnect();
   set({ status: "connecting" });
   try {
-    const dev = await navigator.usb.requestDevice({ filters: ALL_USB_IDS.map((u) => ({ vendorId: u.usbVendorId, productId: u.usbProductId })) });
-    const l = new UsbLink();
-    await l.open(dev);
-    await attach(l);
+    const dev = await navigator.usb.requestDevice({ filters: [...ALL_USB_IDS, ...LIBRE_USB_IDS].map((u) => ({ vendorId: u.usbVendorId, productId: u.usbProductId })) });
+    if (LIBRE_USB_IDS.some((u) => u.usbVendorId === dev.vendorId && u.usbProductId === dev.productId)) {
+      // LibreVNA is recognised by its USB ids, not by probing bytes.
+      const l = new WebUsbBulkLink();
+      await l.open(dev);
+      await attach(l, new LibreVNA(l));
+    } else {
+      const l = new UsbLink();
+      await l.open(dev);
+      await attach(l);
+    }
   } catch (e) {
     set({ status: "disconnected" });
     if ((e as Error)?.name !== "NotFoundError") log(tr("WebUSB: {0}", errMsg(e)), "error");
@@ -125,9 +136,10 @@ export async function connectSimulator() {
   await disconnect();
   const { simModel, simDut } = get();
   const m = simModel === "litevna" ? new MockLink()
+    : simModel === "librevna" ? new MockLibreLink()
     : new MockShellLink({ board: simModel === "nanovna-h4" ? "H4" : "H", firmware: simModel === "nanovna-stock" ? "stock" : "D" });
   m.dut = simDut;
-  await attach(m);
+  await attach(m, m instanceof MockLibreLink ? new LibreVNA(m) : undefined);
 }
 
 export async function disconnect() {
@@ -141,7 +153,8 @@ export async function disconnect() {
   log(tr("Disconnected. The device screen is back in control."));
 }
 
-const isSimulatorLink = (l: LinkBase | null): l is MockLink | MockShellLink => l instanceof MockLink || l instanceof MockShellLink;
+const isSimulatorLink = (l: LinkBase | null): l is MockLink | MockShellLink | MockLibreLink =>
+  l instanceof MockLink || l instanceof MockShellLink || l instanceof MockLibreLink;
 
 export function setSimDut(d: MockLink["dut"]) {
   set({ simDut: d });

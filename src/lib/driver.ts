@@ -7,7 +7,7 @@ export interface Segment { start: number; stop: number; points: number }
 
 /** What the device can do; the UI hides controls that are not supported. */
 export interface DriverCapabilities {
-  protocol: "v2" | "v1-shell";
+  protocol: "v2" | "v1-shell" | "libre";
   /** Largest total point count the app may request (segmented sweeps included). */
   maxPoints: number;
   minHz: number;

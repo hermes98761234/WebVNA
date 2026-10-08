@@ -5,6 +5,7 @@
 | LiteVNA 64 (hw 2, fw 2.2) | **Verified on hardware** | Web Serial, WebUSB |
 | NanoVNA V2, V2 Plus4, NanoVNA-F V2, SAA2 | Expected to work, **unverified** | Web Serial, WebUSB |
 | NanoVNA-H, NanoVNA-H4 (NanoVNA-D or stock firmware) | **Experimental**, simulator-tested only | Web Serial, Bluetooth serial |
+| LibreVNA (USB, protocol 13) | **Experimental**, simulator-tested only | WebUSB |
 | Android phone (Chrome) | Untested | Web Serial (OTG / Bluetooth), WebUSB |
 | iOS / iPadOS | Unsupported (no Web Serial, no WebUSB) | none |
 
@@ -45,6 +46,18 @@ Driver: `src/lib/nanovna.ts` (ChibiOS text shell over USB CDC). It has only been
 - IF averaging, power and channel selection are not available on the shell and are hidden; screenshot (`capture`) and battery (`vbat`) are used.
 
 Safety: only `info`, `version`, `vbat`, `capture`, `pause`, `resume`, `scan` and `help` are ever sent. `saveconfig`, `clearconfig`, `dfu`, `reset`, `cal`, `touchcal`, `config` and everything else are refused by `isForbiddenShellCommand()`. On disconnect the app sends `resume` so the device screen comes back.
+
+## LibreVNA (experimental)
+
+Driver: `src/lib/librevna.ts`, wire format and codecs in `src/lib/libre-protocol.ts`, simulator `src/lib/mock-libre.ts`. It is selected by USB id (VID 0x0483, PID 0x564e or 0x4121) when you pick the device in the WebUSB chooser; nothing is probed. Port 1 is excited, S11 and S21 are the port 1 / port 2 receivers divided by the reference receiver. The assumptions that real hardware may break (all written from memory of the LibreVNA sources, protocol version 13):
+
+- **Endpoints:** a vendor-specific interface with bulk EP 0x01 OUT, 0x81 IN (data) and an optional 0x82 IN (log).
+- **Framing:** `0x5A`, u16 length, u8 type, payload, u32 CRC32 (standard reflected CRC-32; a CRC of 0 is accepted as unchecked). The real firmware may use another CRC variant.
+- **Packet type numbers and payload layouts** (DeviceInfo, SweepSettings, VNADatapoint) are simplified; they changed between protocol versions. The driver refuses to sweep unless DeviceInfo reports a known protocol version (13).
+- **Sweeps:** the device is assumed to send an Ack and then one datapoint per point, repeating until `SetIdle`. Long sweeps are split into segments of at most the reported point limit. IF bandwidth is fixed at 1 kHz and power at -10 dBm; log sweeps become linear segments.
+- No screenshot, battery, IF averaging, power, channel or device-calibration controls (hidden).
+
+Safety: only `RequestDeviceInfo`, `RequestDeviceStatus`, `SweepSettings` and `SetIdle` are ever sent. Firmware, flash, calibration and configuration packets are refused by `isForbiddenLibrePacket()`. On disconnect the app sends `SetIdle`.
 
 ## Android and iOS
 

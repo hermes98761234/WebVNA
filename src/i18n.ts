@@ -646,6 +646,11 @@ const UK: Record<string, string> = {
   "Disconnected": "Відключено",
   "Lets a script on this computer (for example Python) call the WebVNA API through tools/ws-bridge.mjs. The page connects to 127.0.0.1 only and only the documented API methods can be called. Off until you enable it; keep this page open. See the README, \"Automation bridge\".": "Дозволяє скрипту на цьому комп'ютері (наприклад Python) викликати API WebVNA через tools/ws-bridge.mjs. Сторінка підключається лише до 127.0.0.1, і можна викликати лише методи задокументованого API. Вимкнено, доки ви не ввімкнете; тримайте цю сторінку відкритою. Див. README, \"Automation bridge\".",
   "WebVNA v{0}": "WebVNA v{0}",
+  // LibreVNA
+  "LibreVNA (experimental)": "LibreVNA (експериментально)",
+  "LibreVNA packet protocol {0} (experimental)": "Пакетний протокол LibreVNA {0} (експериментально)",
+  "WebUSB: LiteVNA / NanoVNA V2 over USB serial, or LibreVNA (experimental)": "WebUSB: LiteVNA / NanoVNA V2 через USB-послідовний порт або LibreVNA (експериментально)",
+  "Connected via {0}: {1}, firmware {2} (experimental LibreVNA protocol).": "Підключено через {0}: {1}, прошивка {2} (експериментальний протокол LibreVNA).",
 };
 
 export { UK };

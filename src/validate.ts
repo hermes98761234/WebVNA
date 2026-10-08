@@ -36,7 +36,7 @@ export const SMITH_READOUT_IDS = ["rlc", "rx", "gb", "rpxp", "rplc", "lin", "log
 export const SEARCH_MODES = ["max", "min", "peak_left", "peak_right", "valley_left", "valley_right"] as const;
 const CHANNELS = ["s11", "s21", "s12", "s22"] as const;
 const MEMORY = ["A", "B", "C", "D"] as const;
-const SIM_MODEL_IDS = ["litevna", "nanovna-h", "nanovna-h4", "nanovna-stock"] as const;
+const SIM_MODEL_IDS = ["litevna", "nanovna-h", "nanovna-h4", "nanovna-stock", "librevna"] as const;
 
 /** Pick `v[k]` when it passes `ok`, else the default. */
 function field<T>(v: Obj, k: string, def: T, ok: (x: unknown) => boolean): T { return ok(v[k]) ? (v[k] as T) : def; }

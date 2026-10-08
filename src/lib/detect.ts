@@ -4,7 +4,7 @@ import type { LinkBase } from "./links";
 import { LiteVNA, sleep } from "./litevna";
 import { NanoVNAShell } from "./nanovna";
 
-export type Protocol = "v2" | "v1-shell";
+export type Protocol = "v2" | "v1-shell"; // LibreVNA is chosen by USB id (WebUSB), never probed
 
 /**
  * Probe with the V2 handshake: 8×NOP (0x00) + INDICATE (0x0d).

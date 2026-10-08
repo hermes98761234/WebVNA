@@ -9,6 +9,7 @@ All notable changes to WebVNA are listed here. The format follows [Keep a Change
 ### Added
 
 - **NanoVNA V1 / -H / -H4 support (experimental).** A text-shell driver (`src/lib/nanovna.ts`) for stock and DiSlord NanoVNA-D firmware, with binary scan framing where available, screenshot via `capture`, and a command allow-list (`isForbiddenShellCommand()`). Only exercised against the simulator so far; see [docs/DEVICES.md](docs/DEVICES.md).
+- **LibreVNA support (experimental).** WebUSB bulk-endpoint link (`WebUsbBulkLink`), packet protocol with CRC32 framing and a resyncing parser (`libre-protocol.ts`), driver (`librevna.ts`), simulator model `librevna` (`mock-libre.ts`) and a firmware-packet guard (`isForbiddenLibrePacket()`). Written from memory of the LibreVNA sources and only exercised against the simulator; see [docs/DEVICES.md](docs/DEVICES.md).
 - **Driver interface and capabilities** (`VnaDriver`, `DriverCapabilities`) and protocol detection on connect (`detect.ts`). Controls the device lacks (screenshot, battery, IF averaging, power, channels, device calibration) are hidden, and the frequency range and point count follow the connected device.
 - **Simulator for the NanoVNA shell** (`MockShellLink`: H and H4 boards, NanoVNA-D and stock firmware), plus a model selector in the Simulator section.
 - **Bluetooth serial** connection (Web Serial over Bluetooth, Chrome on Android, experimental) next to Web Serial and WebUSB.
