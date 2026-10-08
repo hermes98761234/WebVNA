@@ -19,10 +19,14 @@ export interface TdrSettings {
   /** X axis in distance (m) or time (s). */
   xAxis: "distance" | "time";
   maxDistance: number; // meters, 0 = full range
+  /** FFT size multiplier (zero padding / interpolation): 1, 2, 4, 8 or 16. */
+  padding: number;
 }
 
+export const PADDINGS = [1, 2, 4, 8, 16];
+
 export const DEFAULT_TDR: TdrSettings = {
-  enabled: false, mode: "lowpass_impulse", window: "normal", velocityFactor: 0.66, yAxis: "linear", xAxis: "distance", maxDistance: 0,
+  enabled: false, mode: "lowpass_impulse", window: "normal", velocityFactor: 0.66, yAxis: "linear", xAxis: "distance", maxDistance: 0, padding: 1,
 };
 
 /** In-place radix-2 complex FFT. inverse=true computes the unnormalised inverse. */
@@ -89,7 +93,8 @@ export function timeDomain(data: SweepPoint[], ch: Channel, s: TdrSettings): Tdr
   const beta = WINDOW_BETA[s.window];
   const fStop = data[N - 1].f, fStart = data[0].f;
   const lowpass = s.mode !== "bandpass";
-  const nfft = Math.max(1024, 1 << Math.ceil(Math.log2(N * 4)));
+  const pad = PADDINGS.includes(s.padding) ? s.padding : 1; // old persisted settings lack the field
+  const nfft = Math.max(1024, 1 << Math.ceil(Math.log2(N * 4))) * pad;
   const re = new Float64Array(nfft), im = new Float64Array(nfft);
   let df: number;
   if (lowpass) {
