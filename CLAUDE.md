@@ -52,7 +52,7 @@ src/api.ts            window.webvna scripting API; src/script.ts runs the Script
 src/pwa.ts            service worker registration, install/update state (pwa-plugin.ts, pwa-precache.ts at the root emit dist/sw.js)
 src/session.ts        session files (.webvna.json) and share links (#s=…)
 src/display.ts        state → chart Series (rectSeries), autoScale, valueText, zText (Smith readouts)
-src/i18n.ts           translate/useT/tr, UK dictionary (English source string → Ukrainian), LANGS
+src/i18n.ts           translate/useT/tr, LANGS, DICTS; dictionaries in src/i18n/{uk,de,pl,es}.ts (English source string → translation)
 src/components/       Toolbar, *Panel (sidebar tabs), RectChart/SmithChart (canvas via hooks/useCanvas), ScaleTools,
                       ChartTools (PNG/fullscreen), MarkerTable, AnalysisBox (in MeasurePanel.tsx), LogPanel, inputs.tsx
 ```
@@ -61,7 +61,7 @@ src/components/       Toolbar, *Panel (sidebar tabs), RectChart/SmithChart (canv
 - **Units and numbers:** frequencies are Hz internally. Complex numbers are `[re, im]` tuples; use `C` from `lib/complex.ts`.
 - **TypeScript:** `erasableSyntaxOnly` is on, so no enums and no constructor parameter properties. Use `as const` objects and unions.
 - **New protocol features:** each one needs a `MockLink` implementation and a test in `src/lib/core.test.ts`.
-- **i18n:** every visible string goes through `t()` (`useT()` in components) or `tr()` (non-React code, canvas). The key is the exact English text, with placeholders `{0}`, `{1}`. Add the Ukrainian entry to `UK` in `src/i18n.ts`; the test checks placeholders match. English is the default. `lib/` stays untranslated. Format labels from `FORMAT_BY_ID[..].label` are translated at display time with `t(label)`. Canvas `useCanvas` deps must include `lang`.
+- **i18n:** every visible string goes through `t()` (`useT()` in components) or `tr()` (non-React code, canvas). The key is the exact English text, with placeholders `{0}`, `{1}`. Add the entry to every dictionary in `src/i18n/` (uk, de, pl, es); the tests check placeholders and that every language covers every key, and that every literal `t()`/`tr()` string has a UK entry. English is the default. `lib/` stays untranslated. Format labels from `FORMAT_BY_ID[..].label` are translated at display time with `t(label)`. Canvas `useCanvas` deps must include `lang`.
 - **Styling:** colours come from CSS tokens in `src/index.css`, with light/dark via `prefers-color-scheme` and `[data-theme]`. Below 800 px the layout is mobile: the sidebar becomes a drawer (☰), the toolbar is sticky, `.mobile-only` elements show and `.theme-select` hides.
 - **Charts:** canvas, 8 vertical by 10 horizontal divisions, NanoVNA-style per-trace scale (`perDiv`, `ref`, `refPos`).
   - The left axis follows the active trace; the right axis shows the second trace.

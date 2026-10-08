@@ -42,6 +42,7 @@ class Peer {
     this.fragSize = 0;
     this.alive = true;
     this.closed = false;
+    this.closing = false;
     socket.on("data", (d) => this.onData(d));
     socket.on("close", () => this.finish());
     socket.on("error", () => socket.destroy());
@@ -64,10 +65,21 @@ class Peer {
     p.writeUInt16BE(code, 0);
     r.copy(p, 2);
     this.socket.end(encodeFrame(0x8, p));
-    setTimeout(() => this.socket.destroy(), 1000).unref();
+    // Keep reading (and discarding) what the peer is still sending: destroying the socket mid-upload makes the
+    // kernel reset the connection, and the peer then loses our close frame. Give up after 1 s of silence.
+    this.closing = true;
+    this.buf = Buffer.alloc(0);
+    this.idle();
+  }
+
+  idle() {
+    clearTimeout(this.drain);
+    this.drain = setTimeout(() => this.socket.destroy(), 1000);
+    this.drain.unref();
   }
 
   onData(d) {
+    if (this.closing) return this.idle();
     this.alive = true;
     this.buf = this.buf.length ? Buffer.concat([this.buf, d]) : d;
     for (;;) {

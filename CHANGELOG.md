@@ -7,6 +7,7 @@ All notable changes to WebVNA are listed here. The format follows [Keep a Change
 ## [0.3.0] - 2026-10-08
 
 ### Added
+- **German, Polish and Spanish UI translations.** Dictionaries now live one per language in `src/i18n/`; tests check placeholders, full key coverage per language, and that every `t()`/`tr()` literal has an entry.
 
 - **NanoVNA V1 / -H / -H4 support (experimental).** A text-shell driver (`src/lib/nanovna.ts`) for stock and DiSlord NanoVNA-D firmware, with binary scan framing where available, screenshot via `capture`, and a command allow-list (`isForbiddenShellCommand()`). Only exercised against the simulator so far; see [docs/DEVICES.md](docs/DEVICES.md).
 - **LibreVNA support (experimental).** WebUSB bulk-endpoint link (`WebUsbBulkLink`), packet protocol with CRC32 framing and a resyncing parser (`libre-protocol.ts`), driver (`librevna.ts`), simulator model `librevna` (`mock-libre.ts`) and a firmware-packet guard (`isForbiddenLibrePacket()`). Written from memory of the LibreVNA sources and only exercised against the simulator; see [docs/DEVICES.md](docs/DEVICES.md).

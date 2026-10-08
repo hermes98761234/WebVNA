@@ -30,7 +30,7 @@ NanoVNA-App and NanoVNA-Saver are desktop programs. WebVNA does the same job in 
 - **Devices:** LiteVNA / NanoVNA V2 (binary protocol) and, experimentally, NanoVNA V1 / -H / -H4 (text shell; NanoVNA-D firmware is best, stock firmware sweeps 101 points) and LibreVNA over WebUSB (experimental, simulator-tested only). The protocol is detected on connect, and controls the device lacks (screenshot, battery, IF averaging, power, channels, device calibration) are hidden. A Bluetooth serial module can be used where the browser supports Web Serial over Bluetooth (Chrome on Android, experimental).
 - **Simulator:** byte-level emulators of the LiteVNA, of the NanoVNA-H / -H4 shell (NanoVNA-D and stock firmware) and of the LibreVNA packet protocol with antenna, filter, crystal, cable, RLC and calibration-standard DUTs. Try everything without hardware.
 - **Scripting:** a `window.webvna` API and an in-app Script tab (see [Scripting API](#scripting-api)).
-- **Languages:** English and Ukrainian ([adding one](docs/TRANSLATING.md)).
+- **Languages:** English, Ukrainian, German, Polish and Spanish ([adding one](docs/TRANSLATING.md)).
 
 More: [User guide](docs/USER-GUIDE.md) (calibration, antenna tuning, TDR, scripting), [Device compatibility](docs/DEVICES.md), [Android](docs/ANDROID.md), [Changelog](CHANGELOG.md).
 
@@ -104,7 +104,7 @@ Issues and pull requests are welcome. A few rules:
 
 - Keep `src/lib` free of DOM and React so it stays testable in Node.
 - Each new protocol feature needs a simulator implementation in `src/lib/mock.ts` and a test in `src/lib/core.test.ts`.
-- Every visible string goes through `t()` / `tr()`. Add the Ukrainian entry to `src/i18n.ts`, or leave it out and say so in the PR.
+- Every visible string goes through `t()` / `tr()`. Add an entry to every dictionary in `src/i18n/` (the coverage test lists what is missing), or ask for help with a language in the PR.
 - Run `npm test`, `npm run typecheck` and `npm run lint` before opening a PR.
 
 ## Scripting API
