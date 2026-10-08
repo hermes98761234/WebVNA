@@ -15,6 +15,7 @@ import { MarkerTable } from "./components/MarkerTable";
 import { LogPanel } from "./components/LogPanel";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useT, tr } from "./i18n";
+import { loadSharedFromHash } from "./session";
 import { disconnect, hasWebSerial, reconnectKnown, restoreActiveCal, updateMarkers } from "./controller";
 
 const TABS = [
@@ -45,7 +46,8 @@ export default function App() {
     booted = true;
     restoreActiveCal();
     if (!hasWebSerial()) log(tr("Web Serial isn't available here. Use Chrome or Edge on desktop (https or localhost). The simulator still works."), "error");
-    else void reconnectKnown();
+    else if (!location.hash.startsWith("#s=")) void reconnectKnown();
+    void loadSharedFromHash();
     const bye = () => { void disconnect(); };
     window.addEventListener("beforeunload", bye);
   }, []);

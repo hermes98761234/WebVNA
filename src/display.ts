@@ -1,7 +1,7 @@
 // Turns state into plot-ready series, shared by charts and the marker table.
 import { C } from "./lib/complex";
 import type { SweepPoint } from "./lib/litevna";
-import { FORMAT_BY_ID, impedance, reactanceComponent, traceValues, type FormatId } from "./lib/formats";
+import { FORMAT_BY_ID, channelValue, impedance, type Channel, reactanceComponent, traceValues, type FormatId } from "./lib/formats";
 import { timeDomain } from "./lib/tdr";
 import { evalLimits, type LimitResult } from "./lib/limits";
 import { niceStep, si } from "./lib/units";
@@ -110,8 +110,8 @@ export const SMITH_READOUTS: [SmithReadout, string][] = [
 const sgn = (v: number) => (v >= 0 ? "+" : "−");
 
 /** Smith marker readout in the device's formats (default "R + jX Ω (L/C)"). */
-export function zText(s: SweepPoint, ch: "s11" | "s21", mode: SmithReadout = "rlc"): string {
-  const g = s[ch];
+export function zText(s: SweepPoint, ch: Channel, mode: SmithReadout = "rlc"): string {
+  const g = channelValue(s, ch);
   const z = impedance(g, ch);
   const deg = (C.arg(g) * 180) / Math.PI;
   switch (mode) {

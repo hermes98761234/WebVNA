@@ -1,7 +1,7 @@
 // Time-domain transform (docs/05 §TDR): low-pass impulse/step, band-pass, Kaiser windows, distance axis.
 import { C, type Complex } from "./complex";
 import type { SweepPoint } from "./litevna";
-import type { Channel } from "./formats";
+import { channelValue, type Channel } from "./formats";
 import { SPEED_OF_LIGHT } from "./units";
 import { Z0 } from "./calibration";
 
@@ -79,12 +79,12 @@ export interface TdrResult {
 
 function interpAt(data: SweepPoint[], ch: Channel, f: number): Complex {
   const n = data.length;
-  if (f <= data[0].f) return data[0][ch];
-  if (f >= data[n - 1].f) return data[n - 1][ch];
+  if (f <= data[0].f) return channelValue(data[0], ch);
+  if (f >= data[n - 1].f) return channelValue(data[n - 1], ch);
   let lo = 0, hi = n - 1;
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (data[m].f <= f) lo = m; else hi = m; }
   const t = (f - data[lo].f) / (data[hi].f - data[lo].f || 1);
-  return C.lerp(data[lo][ch], data[hi][ch], t);
+  return C.lerp(channelValue(data[lo], ch), channelValue(data[hi], ch), t);
 }
 
 export function timeDomain(data: SweepPoint[], ch: Channel, s: TdrSettings): TdrResult | null {
@@ -108,11 +108,11 @@ export function timeDomain(data: SweepPoint[], ch: Channel, s: TdrSettings): Tdr
     const g1 = interpAt(data, ch, df), g2 = interpAt(data, ch, 2 * df);
     // DC is real: linear extrapolation of the real part from the two lowest harmonics.
     re[0] = Math.max(-1, Math.min(1, 2 * g1[0] - g2[0]));
-    if (fStart > 2 * df) re[0] = data[0][ch][0]; // sweep starts high: no better information
+    if (fStart > 2 * df) re[0] = channelValue(data[0], ch)[0]; // sweep starts high: no better information
   } else {
     df = (fStop - fStart) / (N - 1);
     for (let k = 0; k < N; k++) {
-      const v = C.scale(data[k][ch], kaiser((2 * k) / (N - 1) - 1, beta));
+      const v = C.scale(channelValue(data[k], ch), kaiser((2 * k) / (N - 1) - 1, beta));
       re[k] = v[0]; im[k] = v[1];
     }
   }

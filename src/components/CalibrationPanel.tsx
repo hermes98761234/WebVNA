@@ -8,6 +8,8 @@ import { calCovers, calSummary, IDEAL_KIT, SMA_KIT, type CalKit, type Standard }
 import { Check, Num, Section, Field, SIInput } from "./inputs";
 import { SPEED_OF_LIGHT, si } from "../lib/units";
 import { useT } from "../i18n";
+import { FixtureSection } from "./FixtureSection";
+import { TwoPortSection } from "./TwoPortSection";
 
 const STD_LABEL: Record<Standard, string> = { open: "OPEN", short: "SHORT", load: "LOAD", isolation: "ISOLATION", thru: "THRU" };
 const STD_HINT: Record<Standard, string> = {
@@ -138,6 +140,9 @@ export function CalibrationPanel() {
         </div>
         <p className="hint">{t("S11 delay is the round-trip time ({0} one way).", si(s.correction.s11Delay / 2, "s"))}</p>
       </Section>
+
+      <FixtureSection />
+      <TwoPortSection />
     </div>
   );
 }

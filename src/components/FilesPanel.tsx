@@ -3,6 +3,7 @@ import { useStore, set, resetSettings } from "../store";
 import { exportData, importTouchstoneFile, chooseAutoSaveDir } from "../controller";
 import { Check, Section, Select, LangSelect } from "./inputs";
 import { useT } from "../i18n";
+import { canShare, copyShareLink, openSessionFile, saveSessionFile } from "../session";
 
 export function FilesPanel() {
   const s = useStore();
@@ -34,6 +35,17 @@ export function FilesPanel() {
           <span style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "5px 10px", cursor: "pointer", color: "var(--fg)", fontSize: 14, display: "inline-block" }}>{t("Open .s1p / .s2p…")}</span>
         </label>
         <p className="hint">{t("Imported files are shown as reference traces (Display tab). RI, MA and DB formats, any frequency unit and reference impedance.")}</p>
+      </Section>
+      <Section title="Session">
+        <div className="row">
+          <button onClick={() => saveSessionFile()}>{t("Save session")}</button>
+          <label>
+            <input type="file" accept=".json,application/json" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void openSessionFile(f); e.target.value = ""; }} />
+            <span style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "5px 10px", cursor: "pointer", color: "var(--fg)", fontSize: 14, display: "inline-block" }}>{t("Open session…")}</span>
+          </label>
+          <button disabled={!has || !canShare()} onClick={() => void copyShareLink()}>{t("Copy share link")}</button>
+        </div>
+        <p className="hint">{t("A session file holds settings, calibration, fixture, memories, references and the current sweep, so it can be opened without a device. A share link carries only the corrected sweep and display settings.")}</p>
       </Section>
       <Section title="Auto-save">
         <Check checked={s.autoSave} onChange={async (v) => { if (v && !(await chooseAutoSaveDir())) return; set({ autoSave: v }); }}>{t("Save every sweep as Touchstone")}</Check>
