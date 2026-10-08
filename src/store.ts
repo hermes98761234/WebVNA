@@ -7,14 +7,17 @@ import type { Channel, FormatId } from "./lib/formats";
 import { FORMAT_BY_ID } from "./lib/formats";
 import type { SearchMode } from "./lib/analysis";
 import { DEFAULT_TDR, type TdrSettings } from "./lib/tdr";
+import { DEFAULT_GATE, type GateSettings } from "./lib/gating";
+import { DEFAULT_CORE, type CoreParams } from "./lib/permeability";
+import type { LimitSegment } from "./lib/limits";
 import type { Dut } from "./lib/mock";
 import type { Complex } from "./lib/complex";
 import type { SmithReadout } from "./display";
-import type { Lang } from "./i18n";
+import { tr, type Lang } from "./i18n";
 
 export type ConnStatus = "disconnected" | "connecting" | "connected";
 export type SweepMode = "linear" | "log" | "cw";
-export type MeasureMode = "off" | "lcmatch" | "cable" | "serieslc" | "shuntlc" | "xtal" | "filter" | "resonance";
+export type MeasureMode = "off" | "lcmatch" | "cable" | "serieslc" | "shuntlc" | "xtal" | "filter" | "resonance" | "stats";
 export type MemorySlot = "A" | "B" | "C" | "D";
 export const MEMORY_SLOTS: MemorySlot[] = ["A", "B", "C", "D"];
 
@@ -30,6 +33,8 @@ export interface Trace {
   memory: MemorySlot | null;
   /** Show data/memory (dB subtraction) instead of the live data. */
   math: "off" | "subtract";
+  /** Pass/fail limit lines in the trace's display units (frequency domain). */
+  limits: LimitSegment[];
 }
 
 export interface Marker { enabled: boolean; f: number; trace: number; tracking: SearchMode | null }
@@ -47,7 +52,7 @@ const scaleFor = (format: FormatId): TraceScale => {
 };
 
 export const newTrace = (channel: Channel, format: FormatId, color: string, enabled = true): Trace =>
-  ({ enabled, channel, format, color, scale: scaleFor(format), memory: null, math: "off" });
+  ({ enabled, channel, format, color, scale: scaleFor(format), memory: null, math: "off", limits: [] });
 
 export interface CalWork {
   freqs: number[] | null;
@@ -71,6 +76,8 @@ export interface State {
   sweepMode: SweepMode;
   cwFreq: number;
   swAverage: number;
+  /** Sweeps dropped (furthest from the mean) per point when software-averaging. */
+  swDiscard: number;
   ifAverage: number;
   powerHf: number;
   powerLf: number;
@@ -102,6 +109,8 @@ export interface State {
   activeMarker: number;
   deltaRef: number | null;
   tdr: TdrSettings;
+  gate: GateSettings;
+  core: CoreParams;
   smithAdmittance: boolean;
   smithReadout: SmithReadout;
   showSmith: boolean;
@@ -129,36 +138,53 @@ const defaultMarkers = (): Marker[] =>
 export const initialState: State = {
   lang: "en",
   status: "disconnected", linkKind: "", info: null, serial: "", vbat: null, simDut: "antenna",
-  start: 300e6, stop: 600e6, points: 201, sweepMode: "linear", cwFreq: 435e6, swAverage: 1, ifAverage: 1, powerHf: 3, powerLf: 1, channelsMode: 0, deviceCal: false,
+  start: 300e6, stop: 600e6, points: 201, sweepMode: "linear", cwFreq: 435e6, swAverage: 1, swDiscard: 0, ifAverage: 1, powerHf: 3, powerLf: 1, channelsMode: 0, deviceCal: false,
   running: false, continuous: false, progress: 0, sweepCount: 0, lastSweepMs: 0, raw: [], data: [], frozen: false,
   calWork: { freqs: null, meas: {}, thru11: null }, cal: null, terms: null, calEnabled: true, kit: IDEAL_KIT, enhancedResponse: false, correction: NO_CORRECTION,
   traces: defaultTraces(), activeTrace: 0, memories: {}, refs: [], markers: defaultMarkers(), activeMarker: 0, deltaRef: null,
-  tdr: DEFAULT_TDR, smithAdmittance: false, smithReadout: "rlc", showSmith: true, showRect: true, measure: "off", measureVf: 0.66,
+  tdr: DEFAULT_TDR, gate: DEFAULT_GATE, core: DEFAULT_CORE, smithAdmittance: false, smithReadout: "rlc", showSmith: true, showRect: true, measure: "off", measureVf: 0.66,
   log: [], commsMonitor: false, autoSave: false, autoSaveName: "sweep", screenshot: null,
 };
 
 /** Keys persisted to localStorage (user settings, not data). */
 const PERSIST: (keyof State)[] = [
-  "start", "stop", "points", "sweepMode", "cwFreq", "swAverage", "ifAverage", "powerHf", "powerLf", "channelsMode", "deviceCal",
-  "kit", "enhancedResponse", "correction", "traces", "markers", "tdr", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut",
+  "start", "stop", "points", "sweepMode", "cwFreq", "swAverage", "swDiscard", "ifAverage", "powerHf", "powerLf", "channelsMode", "deviceCal",
+  "kit", "enhancedResponse", "correction", "traces", "markers", "tdr", "gate", "core", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut",
   "calEnabled", "autoSaveName", "lang",
 ];
 const STORAGE_KEY = "webvna.settings.v1";
 
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
+/** Fill fields missing from a persisted object with defaults (recursively; arrays and unknown extra keys are kept). */
+export function mergeDefaults<T>(def: T, val: unknown): T {
+  if (!isObj(def) || !isObj(val)) return (val === undefined || val === null ? def : val) as T;
+  const out: Record<string, unknown> = { ...val };
+  for (const k of Object.keys(def)) out[k] = mergeDefaults(def[k], val[k]);
+  return out as T;
+}
+
+/** Persisted settings → state patch, tolerating files from older versions (new fields get defaults). */
+export function mergePersisted(o: Record<string, unknown>): Partial<State> {
+  const out: Record<string, unknown> = {};
+  for (const k of PERSIST) if (k in o) out[k] = o[k];
+  for (const k of ["tdr", "gate", "core", "correction", "kit"] as const) if (k in out) out[k] = mergeDefaults(initialState[k], out[k]);
+  if (Array.isArray(out.traces))
+    out.traces = (out.traces as unknown[]).map((t, i) => mergeDefaults(initialState.traces[i] ?? newTrace("s11", "logmag", TRACE_COLORS[i % 4], false), t));
+  return out as Partial<State>;
+}
+
 function loadPersisted(): Partial<State> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const o = JSON.parse(raw);
-    const out: Partial<State> = {};
-    for (const k of PERSIST) if (k in o) (out as Record<string, unknown>)[k] = o[k];
-    return out;
+    return raw ? mergePersisted(JSON.parse(raw)) : {};
   } catch { return {}; }
 }
 
 export const useStore = create<State>()(() => ({ ...initialState, ...loadPersisted() }));
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let saveFailed = false;
 useStore.subscribe((s) => {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -166,7 +192,11 @@ useStore.subscribe((s) => {
       const o: Record<string, unknown> = {};
       for (const k of PERSIST) o[k] = s[k];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(o));
-    } catch { /* storage unavailable */ }
+      saveFailed = false;
+    } catch (e) {
+      // e.g. quota exceeded by calibration-standard data in the kit; warn once (log() re-enters this subscriber)
+      if (!saveFailed) { saveFailed = true; log(tr("Couldn't save settings: {0}", e instanceof Error ? e.message : String(e)), "error"); }
+    }
   }, 400);
 });
 

@@ -3,12 +3,15 @@ import { LiteVNA, planSegments, AbortError, type SweepPoint } from "./lib/litevn
 import { MockLink } from "./lib/mock";
 import { SerialLink, UsbLink, type LinkBase } from "./lib/links";
 import { DATA_MODE, USB_IDS } from "./lib/protocol";
-import { C } from "./lib/complex";
-import { applyCalibration, computeErrorTerms, parseCal, serializeCal, type CalData, type Standard } from "./lib/calibration";
+import { applyCalibration, computeErrorTerms, parseCal, serializeCal, standardFromTouchstone, type CalData, type Standard } from "./lib/calibration";
+import { averageSweeps } from "./lib/averaging";
+import { applyGate, type GateSettings } from "./lib/gating";
+import { timeDomain, strongestPeak } from "./lib/tdr";
+import { parseLimits, serializeLimits } from "./lib/limits";
 import { FORMAT_BY_ID, traceValues } from "./lib/formats";
 import { nearestIndex, search } from "./lib/analysis";
 import { parseTouchstone, writeCsv, writeTouchstone } from "./lib/touchstone";
-import { get, log, set, TRACE_COLORS, type MemorySlot } from "./store";
+import { get, log, set, updateTrace, TRACE_COLORS, type MemorySlot } from "./store";
 import { tr } from "./i18n";
 
 let vna: LiteVNA | null = null;
@@ -188,18 +191,15 @@ async function acquire(): Promise<SweepPoint[]> {
   if (!vna) throw new Error(tr("Not connected."));
   const s = get();
   const n = Math.max(1, s.swAverage);
-  let acc: SweepPoint[] | null = null;
+  const sweeps: SweepPoint[][] = [];
   abort = new AbortController();
   for (let k = 0; k < n; k++) {
-    const d = await vna.sweepSegments(segments(), {
+    sweeps.push(await vna.sweepSegments(segments(), {
       signal: abort.signal,
       onProgress: (p) => set({ progress: (k + p) / n }),
-    }, 1024);
-    if (!acc) acc = d.map((p) => ({ f: p.f, s11: [...p.s11] as typeof p.s11, s21: [...p.s21] as typeof p.s21 }));
-    else for (let i = 0; i < d.length; i++) { acc[i].s11 = C.add(acc[i].s11, d[i].s11); acc[i].s21 = C.add(acc[i].s21, d[i].s21); }
+    }, 1024));
   }
-  if (n > 1) for (const p of acc!) { p.s11 = C.scale(p.s11, 1 / n); p.s21 = C.scale(p.s21, 1 / n); }
-  return acc!;
+  return n === 1 ? sweeps[0] : averageSweeps(sweeps, s.swDiscard);
 }
 
 async function sweepCycle() {
@@ -249,8 +249,8 @@ export function restartIfRunning() {
 export function recompute() {
   const s = get();
   const terms = s.calEnabled ? s.terms : null;
-  const data = s.raw.length ? applyCalibration(s.raw, terms, s.correction) : [];
-  set({ data });
+  const cal = s.raw.length ? applyCalibration(s.raw, terms, s.correction) : [];
+  set({ data: applyGate(cal, s.gate) });
   updateMarkers();
 }
 
@@ -267,7 +267,7 @@ export function updateMarkers() {
     if (m.tracking) {
       const t = s.traces[m.trace] ?? s.traces[0];
       const fmt = FORMAT_BY_ID[t.format].circular ? "logmag" : t.format;
-      const v = traceValues(d, t.channel, fmt);
+      const v = traceValues(d, t.channel, fmt, { core: s.core });
       // For left/right modes start one step "behind" so a marker already on a peak stays there.
       const cur = nearestIndex(d, f);
       const from = m.tracking.endsWith("left") ? Math.min(d.length - 1, cur + 1) : m.tracking.endsWith("right") ? Math.max(0, cur - 1) : cur;
@@ -278,6 +278,22 @@ export function updateMarkers() {
     return m;
   });
   if (changed) set({ markers });
+}
+
+/** Change gate settings and re-process the current sweep. */
+export function setGate(patch: Partial<GateSettings>) {
+  set((s) => ({ gate: { ...s.gate, ...patch } }));
+  recompute();
+}
+
+/** Centre the gate on the strongest time-domain response of the (ungated) calibrated data. */
+export function gateAroundPeak() {
+  const s = get();
+  const ch = s.gate.channel === "s21" ? "s21" : "s11";
+  const raw = s.raw.length ? applyCalibration(s.raw, s.calEnabled ? s.terms : null, s.correction) : [];
+  const r = timeDomain(raw, ch, { ...s.tdr, mode: "bandpass", yAxis: "linear", window: "normal" });
+  if (!r) { log(tr("Sweep first: the time-domain transform needs data."), "error"); return; }
+  setGate({ center: r.time[strongestPeak(r)] });
 }
 
 /* ------------------------------------------------------------------ calibration */
@@ -347,6 +363,25 @@ export function restoreActiveCal() {
   } catch { /* ignore */ }
 }
 
+/** Attach a measured Touchstone file (S11) as the data of an open/short/load standard. */
+export async function attachStandardFile(std: "open" | "short" | "load", file: File) {
+  try {
+    const sd = standardFromTouchstone(await file.text(), file.name);
+    set((s) => ({ kit: { ...s.kit, name: "Custom", data: { ...s.kit.data, [std]: sd } } }));
+    refreshCalTerms();
+    log(tr("{0} standard: {1} ({2} points).", tr(std.toUpperCase()), file.name, sd.freqs.length));
+  } catch (e) { log(tr("Import {0}: {1}", file.name, errMsg(e)), "error"); }
+}
+export function detachStandard(std: "open" | "short" | "load") {
+  set((s) => {
+    const kit = { ...s.kit, name: "Custom" }, data = { ...kit.data };
+    delete data[std];
+    if (Object.keys(data).length) kit.data = data; else delete kit.data;
+    return { kit };
+  });
+  refreshCalTerms();
+}
+
 export function clearCalWork() { set({ calWork: { freqs: null, meas: {}, thru11: null } }); }
 export function resetCalibration() { setCalibration(null); clearCalWork(); log(tr("Calibration cleared. Readings are raw.")); }
 
@@ -413,6 +448,21 @@ export async function importCalFile(file: File) {
     set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
     setCalibration(cal);
     log(tr("Calibration loaded from {0}.", file.name));
+  } catch (e) { log(tr("Import {0}: {1}", file.name, errMsg(e)), "error"); }
+}
+
+/* ------------------------------------------------------------------ limits */
+
+export function exportLimits(trace: number) {
+  const segs = get().traces[trace]?.limits ?? [];
+  if (!segs.length) { log(tr("No limits to save."), "error"); return; }
+  download(`webvna-limits-TR${trace + 1}.json`, serializeLimits(segs), "application/json");
+}
+export async function importLimitsFile(trace: number, file: File) {
+  try {
+    const segs = parseLimits(await file.text());
+    updateTrace(trace, { limits: segs });
+    log(tr("Loaded {0}: {1} limit segments.", file.name, segs.length));
   } catch (e) { log(tr("Import {0}: {1}", file.name, errMsg(e)), "error"); }
 }
 

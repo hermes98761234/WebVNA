@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import { useStore, set, updateMarker, updateTrace } from "../store";
-import { rectSeries, cssVar, valueText, type Series } from "../display";
+import { rectSeries, cssVar, valueText, limitReports, type Series } from "../display";
 import { useCanvas } from "../hooks/useCanvas";
 import { fmtHz, fmtHzShort, si } from "../lib/units";
 import { FORMAT_BY_ID } from "../lib/formats";
+import { SPEED_OF_LIGHT } from "../lib/units";
 import { MIN_HZ } from "../lib/protocol";
 import { restartIfRunning } from "../controller";
 import { ChartTools } from "./ChartTools";
@@ -28,10 +29,11 @@ interface Pinch {
 export function RectChart() {
   const s = useStore();
   const tl = useT();
-  const { data, traces, activeTrace, memories, refs, tdr, markers, activeMarker, deltaRef, sweepMode, lang } = s;
+  const { data, traces, activeTrace, memories, refs, tdr, gate, core, markers, activeMarker, deltaRef, sweepMode, lang } = s;
   const { series, xKind } = useMemo(() => rectSeries(s),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, traces, activeTrace, memories, refs, tdr, lang]);
+    [data, traces, activeTrace, memories, refs, tdr, core, lang]);
+  const reports = useMemo(() => (tdr.enabled ? [] : limitReports({ data, memories, core, traces })), [data, memories, core, traces, tdr.enabled]);
   const [hover, setHover] = useState<number | null>(null);
   const [zoom, setZoom] = useState<[number, number] | null>(null);
   const drag = useRef<"marker" | "zoom" | "pinch" | null>(null);
@@ -131,8 +133,46 @@ export function RectChart() {
       }
       ctx.stroke();
     }
+    // limit lines (thick dashed, trace colour) with failing points in red
+    ctx.lineCap = "butt";
+    for (const r of reports) {
+      const t = traces[r.index], se = series.find((x) => x.traceIndex === r.index && x.primary);
+      if (!se) continue;
+      ctx.strokeStyle = t.color; ctx.lineWidth = 3.5; ctx.globalAlpha = 0.7; ctx.setLineDash([9, 5]);
+      for (const l of t.limits) {
+        if (l.enabled === false) continue;
+        ctx.beginPath();
+        if (xr.log && (l.f1 <= 0 || l.f2 <= 0)) continue;
+        ctx.moveTo(xToPx(l.f1), Math.max(-1e4, Math.min(1e4, yToPx(se, l.v1)))); ctx.lineTo(xToPx(l.f2), Math.max(-1e4, Math.min(1e4, yToPx(se, l.v2))));
+        ctx.stroke();
+      }
+      ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.fillStyle = cssVar("--err");
+      for (const i of r.result.failIndex) {
+        const v = se.y[i];
+        if (!Number.isNaN(v)) { ctx.beginPath(); ctx.arc(xToPx(se.x[i]), Math.max(-1e4, Math.min(1e4, yToPx(se, v))), 3, 0, 2 * Math.PI); ctx.fill(); }
+      }
+    }
+    // gate (time-domain view)
+    if (tdr.enabled && gate.enabled && xKind !== "freq") {
+      const k = xKind === "time" ? 1 : (SPEED_OF_LIGHT * tdr.velocityFactor) / (gate.channel === "s21" ? 1 : 2);
+      const a = xToPx((gate.center - gate.span / 2) * k), b = xToPx((gate.center + gate.span / 2) * k);
+      ctx.fillStyle = cssVar(gate.type === "notch" ? "--err" : "--accent"); ctx.globalAlpha = 0.15;
+      ctx.fillRect(a, M.t, b - a, ph); ctx.globalAlpha = 0.8; ctx.setLineDash([5, 3]); ctx.strokeStyle = ctx.fillStyle;
+      ctx.beginPath(); ctx.moveTo(a, M.t); ctx.lineTo(a, M.t + ph); ctx.moveTo(b, M.t); ctx.lineTo(b, M.t + ph); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
     ctx.restore();
     ctx.setLineDash([]); ctx.globalAlpha = 1;
+    // PASS/FAIL badges (bottom right of the plot)
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "bold 11px system-ui, sans-serif";
+    reports.forEach((r, k) => {
+      const tw = ctx.measureText(r.text).width + 12, bx = M.l + pw - 6 - tw, by = M.t + ph - 8 - 18 * (reports.length - k);
+      const col = cssVar(r.status === "pass" ? "--ok" : r.status === "fail" ? "--err" : "--warn");
+      ctx.fillStyle = cssVar("--chart-bg"); ctx.globalAlpha = 0.85; ctx.fillRect(bx, by, tw, 16); ctx.globalAlpha = 1;
+      ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, tw - 1, 15);
+      ctx.fillStyle = col; ctx.fillText(r.text, bx + tw - 6, by + 8.5);
+    });
+    ctx.font = "11px system-ui, sans-serif";
     // legend
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
     let lx = M.l, ly = 10;
@@ -203,7 +243,7 @@ export function RectChart() {
         ctx.fillText(`${fmtHzShort(Math.min(...zoom))} … ${fmtHzShort(Math.max(...zoom))}`, M.l + pw / 2, M.t + 4);
       }
     }
-  }, [series, markers, activeMarker, deltaRef, hover, zoom, xr, activeTrace, tdr.enabled, lang]);
+  }, [series, markers, activeMarker, deltaRef, hover, zoom, xr, activeTrace, tdr.enabled, tdr.velocityFactor, gate, reports, lang]);
 
   const xAt = (e: React.PointerEvent) => {
     const c = canvas.current!;
