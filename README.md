@@ -22,12 +22,17 @@ NanoVNA-App and NanoVNA-Saver are desktop programs. WebVNA does the same job in 
 - **Display:** 4 traces in 27 formats (log mag, phase, group delay, SWR, R/X, \|Z\|, Q, L/C, G/B, …), Smith and polar charts, stored traces A–D with data/memory maths, `.sNp` overlays, light and dark themes, a mobile layout.
 - **Markers:** 8 markers, peak/valley search and tracking, delta markers, marker → start/stop/center/span/e-delay.
 - **Analysis:** VSWR bandwidth and best match, L/C matching networks, filter (type, insertion loss, bandwidth, Q), cable, crystal and LC resonators, resonances.
-- **Time domain:** TDR/DTF with low-pass impulse/step and band-pass modes, Kaiser windows, velocity factor, distance or time axis.
-- **Files:** Touchstone `.s1p`/`.s2p` (RI/MA/DB) and CSV export/import, auto-save to a folder, chart PNG.
+- **Time domain:** TDR/DTF with low-pass impulse/step and band-pass modes, Kaiser windows, zero padding, velocity factor, distance or time axis, and time-domain gating.
+- **Limits and statistics:** limit lines with pass/fail per trace, trace statistics (min/max/mean/RMS/std/slope/ripple), sweep averaging with outlier discard, R/ω, X/ω and µ′/µ″ (toroid core) formats.
+- **2-port:** full 2-port Touchstone import/export, fixture de-embedding/embedding (Touchstone, lumped R/L/C, transmission line), a flip-DUT wizard for full S-parameters on a one-path instrument, Touchstone files as calibration standards.
+- **Files:** Touchstone `.s1p`/`.s2p` (RI/MA/DB) and CSV export/import, auto-save to a folder, chart PNG, session files (`.webvna.json`) and shareable links (`#s=…`).
+- **Offline and mobile:** installable PWA that works offline, touch gestures on the charts (drag, pinch, double-tap). See [docs/ANDROID.md](docs/ANDROID.md).
 - **Devices:** LiteVNA / NanoVNA V2 (binary protocol) and, experimentally, NanoVNA V1 / -H / -H4 (text shell; NanoVNA-D firmware is best, stock firmware sweeps 101 points). The protocol is detected on connect, and controls the device lacks (screenshot, battery, IF averaging, power, channels, device calibration) are hidden. A Bluetooth serial module can be used where the browser supports Web Serial over Bluetooth (Chrome on Android, experimental).
 - **Simulator:** byte-level emulators of the LiteVNA and of the NanoVNA-H / -H4 shell (NanoVNA-D and stock firmware) with antenna, filter, crystal, cable, RLC and calibration-standard DUTs. Try everything without hardware.
 - **Scripting:** a `window.webvna` API and an in-app Script tab (see [Scripting API](#scripting-api)).
-- **Languages:** English and Ukrainian.
+- **Languages:** English and Ukrainian ([adding one](docs/TRANSLATING.md)).
+
+More: [User guide](docs/USER-GUIDE.md) (calibration, antenna tuning, TDR, scripting), [Device compatibility](docs/DEVICES.md), [Android](docs/ANDROID.md), [Changelog](CHANGELOG.md).
 
 ## Quick start
 
@@ -69,16 +74,23 @@ npm run test:hw    # hardware tests on a real LiteVNA; HW_PORT=/dev/cu.usbmodem�
 ```
 
 ```
-src/lib/          protocol, transports (Web Serial / WebUSB), LiteVNA driver, simulator, calibration,
-                  trace formats, analysis, TDR, Touchstone. No DOM: runs and is tested in Node.
+src/lib/          protocol, transports (Web Serial / WebUSB), drivers (LiteVNA/V2, NanoVNA shell), simulators,
+                  calibration, trace formats, analysis, TDR, gating, limits, de-embedding, Touchstone.
+                  No DOM: runs and is tested in Node.
 src/store.ts      app state (zustand, persisted to localStorage)
 src/controller.ts device I/O, sweep loop, calibration workflow, import/export
 src/display.ts    state → chart series
 src/components/   React UI; charts are drawn on canvas
+src/api.ts        window.webvna scripting API (src/script.ts runs the Script tab)
+src/pwa.ts        service worker registration, install/update state
 src/i18n.ts       translations
 ```
 
 Stack: React 19, TypeScript, Vite, zustand, vitest. No runtime dependencies besides React and zustand.
+
+### Releases
+
+Releases are tagged `vX.Y.Z` (semantic versioning); what changed is in [CHANGELOG.md](CHANGELOG.md). Bump `version` in `package.json` when tagging.
 
 ### Contributing
 
@@ -135,7 +147,7 @@ with sync_playwright() as p:
 
 The LiteVNA protocol also exposes the bootloader's flash registers (`0xE0–0xEF`). WebVNA **never writes them**, except `0xEE` (screenshot). The driver refuses those writes in code (`isForbiddenWrite()` in `src/lib/protocol.ts`). Firmware update is deliberately not implemented; use NanoVNA-App for that.
 
-Tested on a LiteVNA 64 (hardware rev 2, firmware 2.2). Other NanoVNA V2–protocol devices should work but haven't been tested. NanoVNA V1/-H/-H4 support (text shell, `src/lib/nanovna.ts`) is **experimental** and so far only exercised against the simulator. The driver refuses dangerous shell commands (`isForbiddenShellCommand()`), and the app sends `resume` on disconnect so the device screen comes back.
+Tested on a LiteVNA 64 (hardware rev 2, firmware 2.2). Other NanoVNA V2–protocol devices should work but haven't been tested; reports are welcome ([docs/DEVICES.md](docs/DEVICES.md)). NanoVNA V1/-H/-H4 support (text shell, `src/lib/nanovna.ts`) is **experimental** and so far only exercised against the simulator. The driver refuses dangerous shell commands (`isForbiddenShellCommand()`), and the app sends `resume` on disconnect so the device screen comes back.
 
 ## Acknowledgements
 

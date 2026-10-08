@@ -6,7 +6,7 @@ This folder is its own git repo (`main`). The parent folder (`../`) holds docs, 
 ## Commands
 ```bash
 npm run dev        # http://localhost:5173 (Chrome/Edge; localhost counts as a secure context for Web Serial)
-npm test           # vitest: src/lib/core.test.ts (simulator) + src/i18n.test.ts
+npm test           # vitest: src/lib/*.test.ts (simulators), src/api.test.ts, src/store.test.ts, src/i18n.test.ts, pwa-precache.test.ts
 npm run test:hw    # src/lib/hardware.test.ts against the real device (HW_PORT, default /dev/cu.usbmodemv1_01) → hw-report.json
 npm run typecheck  # tsc -b (app + node + test projects)
 npm run build      # tsc -b && vite build → dist/ (base './')
@@ -24,16 +24,30 @@ src/lib/              NO DOM, NO React, NO i18n. Runs in Node (vitest)
   protocol.ts         opcodes, registers, checksum, identify(), isForbiddenWrite()
   links.ts            LinkBase (byte queue + read(n, timeout)), SerialLink (Web Serial), UsbLink (WebUSB)
   litevna.ts          LiteVNA driver: init, read/write regs, sweepSegments (≤1024/segment), screenshot, extras; planSegments() for linear/log/CW
+  driver.ts           VnaDriver interface, DriverCapabilities, splitSegments()
+  detect.ts           detectProtocol() (V2 vs shell) and createDriver()
+  nanovna.ts          NanoVNAShell: V1/-H/-H4 text-shell driver (experimental), isForbiddenShellCommand()
+  mock-shell.ts       MockShellLink: shell simulator (H/H4, NanoVNA-D/stock)
   mock.ts             MockLink simulator with the same byte protocol; DUTs: antenna, filter, crystal, cable, rlc, open/short/load/thru/isolation
   calibration.ts      SOL (closed-form ideal + general 3×3 with cal-kit models), response/isolation/thru, enhanced response, interpolation, e-delay, JSON
   formats.ts          27 trace formats (FORMATS/FORMAT_BY_ID), impedance(), swr() (Infinity when |Γ|≥1), groupDelay(), traceValues()
   analysis.ts         marker search, SWR bandwidth, resonances, filter, L/C match, cable, crystal, LC resonators
   tdr.ts              FFT, Kaiser windows, low-pass impulse/step, band-pass, distance axis
   touchstone.ts       .s1p/.s2p write (RI/MA/DB) + parse (any unit/format/Z0), CSV
+  limits.ts stats.ts  limit lines + pass/fail; trace statistics and ripple
+  averaging.ts        outlier-rejecting sweep averaging (SweepAccumulator)
+  permeability.ts     µ′/µ″ of a toroid core from S11
+  gating.ts           time-domain gating (FD→TD→gate→FD)
+  s2.ts deembed.ts    2×2 S/T maths; fixture de-embedding/embedding
+  twoport.ts          flip-DUT combination into full S-parameters
   units.ts            si(), fmtHz(), parseHz("435M"), parseSI("4.7n"), niceStep()
 src/store.ts          zustand State + defaults; PERSIST keys saved to localStorage ("webvna.settings.v1")
 src/controller.ts     everything with side effects: connect/disconnect, sweep loop (AbortController), calibration workflow,
                       cal slots ("webvna.cal.<name>", active cal "webvna.activecal"), memories, import/export, auto-save
+src/caps.ts           frequency/point limits from the connected driver's capabilities, simulator model labels
+src/api.ts            window.webvna scripting API; src/script.ts runs the Script tab code
+src/pwa.ts            service worker registration, install/update state (pwa-plugin.ts, pwa-precache.ts at the root emit dist/sw.js)
+src/session.ts        session files (.webvna.json) and share links (#s=…)
 src/display.ts        state → chart Series (rectSeries), autoScale, valueText, zText (Smith readouts)
 src/i18n.ts           translate/useT/tr, UK dictionary (English source string → Ukrainian), LANGS
 src/components/       Toolbar, *Panel (sidebar tabs), RectChart/SmithChart (canvas via hooks/useCanvas), ScaleTools,
@@ -51,6 +65,7 @@ src/components/       Toolbar, *Panel (sidebar tabs), RectChart/SmithChart (canv
   - SWR defaults to a manual scale of 1 + 0.5/div, like the device. When auto, it is floored at 1 and capped at 30.
   - ±Infinity values are drawn clipped at the edge; NaN breaks the line.
   - Rect chart: drag moves the active marker, Shift-drag zooms the frequency range, double-click auto-scales, the wheel changes scale/div, Shift+wheel moves the reference.
+- **Drivers:** the app talks to `VnaDriver` (`lib/driver.ts`), never to `LiteVNA` or `NanoVNAShell` directly. A new device feature adds a flag to `DriverCapabilities`, an implementation in each driver that has it, and hides the UI when absent. The shell driver only sends allow-listed commands (`isForbiddenShellCommand()`); keep it that way. Shell features need a `MockShellLink` implementation and a test.
 - **Device access:** goes through `LiteVNA.exclusive()`, a promise queue. Stimulus changes during continuous sweeps call `restartIfRunning()`, which aborts and restarts the sweep.
 
 ## Hardware rules (the real device is often plugged in)
@@ -79,10 +94,11 @@ src/components/       Toolbar, *Panel (sidebar tabs), RectChart/SmithChart (canv
 
 ## Ideas / not done
 - **Firmware:** DFU flashing (deliberately out; brick risk).
-- **Calibration and import:** the NanoVNA-Saver `.cal` format, and full 2-port Touchstone import of S12/S22.
+- **Drivers:** LibreVNA driver; a WebSocket bridge to remote or SCPI-style instruments.
+- **Calibration:** the NanoVNA-Saver `.cal` format.
 - **Display:**
   - SWR on a log axis.
   - Per-trace TDR settings: currently global, with one series per channel.
   - A multi-window "pop-out" (fullscreen per chart exists).
-- **Phones:** Web Serial on Android Chrome isn't tested; on Android, WebUSB to CDC is the likely path. iOS has neither.
+- **Hardware verification:** NanoVNA-H / -H4 (binary scan layout, capture byte order, point counts) and Android (Web Serial over OTG/Bluetooth, WebUSB) are untested on real devices.
 - **Translation gaps:** the TDR legend, `calSummary` and the L/C match topology text are English only, because they come from `lib/`.
