@@ -10,6 +10,7 @@ import { DEFAULT_TDR, type TdrSettings } from "./lib/tdr";
 import { DEFAULT_GATE, type GateSettings } from "./lib/gating";
 import { DEFAULT_CORE, type CoreParams } from "./lib/permeability";
 import type { LimitSegment } from "./lib/limits";
+import { NO_FIXTURE, type FixtureSettings } from "./lib/deembed";
 import type { Dut } from "./lib/mock";
 import type { Complex } from "./lib/complex";
 import type { SmithReadout } from "./display";
@@ -60,6 +61,9 @@ export interface CalWork {
   thru11: Complex[] | null;
 }
 
+/** Full 2-port by flipping the DUT: raw forward/reversed sweeps and the combined result (not persisted). */
+export interface TwoPortState { fwd: SweepPoint[] | null; rev: SweepPoint[] | null; result: SweepPoint[] | null }
+
 export interface State {
   lang: Lang;
   // connection
@@ -100,6 +104,8 @@ export interface State {
   kit: CalKit;
   enhancedResponse: boolean;
   correction: Correction;
+  fixture: FixtureSettings;
+  twoPort: TwoPortState;
   // display
   traces: Trace[];
   activeTrace: number;
@@ -140,7 +146,7 @@ export const initialState: State = {
   status: "disconnected", linkKind: "", info: null, serial: "", vbat: null, simDut: "antenna",
   start: 300e6, stop: 600e6, points: 201, sweepMode: "linear", cwFreq: 435e6, swAverage: 1, swDiscard: 0, ifAverage: 1, powerHf: 3, powerLf: 1, channelsMode: 0, deviceCal: false,
   running: false, continuous: false, progress: 0, sweepCount: 0, lastSweepMs: 0, raw: [], data: [], frozen: false,
-  calWork: { freqs: null, meas: {}, thru11: null }, cal: null, terms: null, calEnabled: true, kit: IDEAL_KIT, enhancedResponse: false, correction: NO_CORRECTION,
+  calWork: { freqs: null, meas: {}, thru11: null }, cal: null, terms: null, calEnabled: true, kit: IDEAL_KIT, enhancedResponse: false, correction: NO_CORRECTION, fixture: NO_FIXTURE, twoPort: { fwd: null, rev: null, result: null },
   traces: defaultTraces(), activeTrace: 0, memories: {}, refs: [], markers: defaultMarkers(), activeMarker: 0, deltaRef: null,
   tdr: DEFAULT_TDR, gate: DEFAULT_GATE, core: DEFAULT_CORE, smithAdmittance: false, smithReadout: "rlc", showSmith: true, showRect: true, measure: "off", measureVf: 0.66,
   log: [], commsMonitor: false, autoSave: false, autoSaveName: "sweep", screenshot: null,
@@ -149,10 +155,17 @@ export const initialState: State = {
 /** Keys persisted to localStorage (user settings, not data). */
 const PERSIST: (keyof State)[] = [
   "start", "stop", "points", "sweepMode", "cwFreq", "swAverage", "swDiscard", "ifAverage", "powerHf", "powerLf", "channelsMode", "deviceCal",
-  "kit", "enhancedResponse", "correction", "traces", "markers", "tdr", "gate", "core", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut",
+  "kit", "enhancedResponse", "correction", "fixture", "traces", "markers", "tdr", "gate", "core", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut",
   "calEnabled", "autoSaveName", "lang",
 ];
 const STORAGE_KEY = "webvna.settings.v1";
+
+/** The persisted settings of a state snapshot (for session files). */
+export function persistedSettings(s: State): Record<string, unknown> {
+  const o: Record<string, unknown> = {};
+  for (const k of PERSIST) o[k] = s[k];
+  return o;
+}
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
@@ -168,7 +181,7 @@ export function mergeDefaults<T>(def: T, val: unknown): T {
 export function mergePersisted(o: Record<string, unknown>): Partial<State> {
   const out: Record<string, unknown> = {};
   for (const k of PERSIST) if (k in o) out[k] = o[k];
-  for (const k of ["tdr", "gate", "core", "correction", "kit"] as const) if (k in out) out[k] = mergeDefaults(initialState[k], out[k]);
+  for (const k of ["tdr", "gate", "core", "correction", "kit", "fixture"] as const) if (k in out) out[k] = mergeDefaults(initialState[k], out[k]);
   if (Array.isArray(out.traces))
     out.traces = (out.traces as unknown[]).map((t, i) => mergeDefaults(initialState.traces[i] ?? newTrace("s11", "logmag", TRACE_COLORS[i % 4], false), t));
   return out as Partial<State>;

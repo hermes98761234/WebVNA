@@ -3,13 +3,16 @@ import { LiteVNA, planSegments, AbortError, type SweepPoint } from "./lib/litevn
 import { MockLink } from "./lib/mock";
 import { SerialLink, UsbLink, type LinkBase } from "./lib/links";
 import { DATA_MODE, USB_IDS } from "./lib/protocol";
-import { applyCalibration, computeErrorTerms, parseCal, serializeCal, standardFromTouchstone, type CalData, type Standard } from "./lib/calibration";
+import { computeErrorTerms, parseCal, serializeCal, standardFromTouchstone, type CalData, type Standard } from "./lib/calibration";
 import { averageSweeps } from "./lib/averaging";
-import { applyGate, type GateSettings } from "./lib/gating";
+import type { GateSettings } from "./lib/gating";
+import { NO_FIXTURE, applyFixture, type FixtureSettings } from "./lib/deembed";
+import { processData } from "./process";
 import { timeDomain, strongestPeak } from "./lib/tdr";
 import { parseLimits, serializeLimits } from "./lib/limits";
 import { FORMAT_BY_ID, traceValues } from "./lib/formats";
 import { nearestIndex, search } from "./lib/analysis";
+import { combineFlip, fakeFlip } from "./lib/twoport";
 import { parseTouchstone, writeCsv, writeTouchstone } from "./lib/touchstone";
 import { get, log, set, updateTrace, TRACE_COLORS, type MemorySlot } from "./store";
 import { tr } from "./i18n";
@@ -248,9 +251,14 @@ export function restartIfRunning() {
 
 export function recompute() {
   const s = get();
-  const terms = s.calEnabled ? s.terms : null;
-  const cal = s.raw.length ? applyCalibration(s.raw, terms, s.correction) : [];
-  set({ data: applyGate(cal, s.gate) });
+  let data: SweepPoint[];
+  try { data = processData(s.raw, s); }
+  catch (e) {
+    // an unusable fixture stage must not blank the display: show the data without fixture and say why
+    log(tr("Fixture: {0}", errMsg(e)), "error");
+    data = processData(s.raw, { ...s, fixture: NO_FIXTURE });
+  }
+  set({ data });
   updateMarkers();
 }
 
@@ -290,7 +298,7 @@ export function setGate(patch: Partial<GateSettings>) {
 export function gateAroundPeak() {
   const s = get();
   const ch = s.gate.channel === "s21" ? "s21" : "s11";
-  const raw = s.raw.length ? applyCalibration(s.raw, s.calEnabled ? s.terms : null, s.correction) : [];
+  const raw = processData(s.raw, { ...s, gate: { ...s.gate, enabled: false } });
   const r = timeDomain(raw, ch, { ...s.tdr, mode: "bandpass", yAxis: "linear", window: "normal" });
   if (!r) { log(tr("Sweep first: the time-domain transform needs data."), "error"); return; }
   setGate({ center: r.time[strongestPeak(r)] });
@@ -423,6 +431,75 @@ export function loadCalSlot(name: string) {
   } catch (e) { log(tr("Couldn't load calibration: {0}", errMsg(e)), "error"); }
 }
 export function deleteCalSlot(name: string) { try { localStorage.removeItem(CAL_PREFIX + name); } catch { /* ignore */ } }
+
+/* ------------------------------------------------------------------ fixture */
+
+/** Replace the fixture settings and re-process the current sweep. */
+export function setFixture(fixture: FixtureSettings) {
+  set({ fixture });
+  recompute();
+}
+
+/* ------------------------------------------------------------------ two-port by flipping the DUT */
+
+/** Simulator only: present the DUT reversed (port 1 sees DUT port 2). */
+export function setSimReversed(on: boolean) { if (link instanceof MockLink) link.reversed = on; }
+
+/** Acquire a RAW sweep of the DUT in one orientation (forward, or reversed after the user turned it around). */
+export async function measureFlip(dir: "fwd" | "rev") {
+  if (!vna) { log(tr("Connect a device (or the simulator) first."), "error"); return; }
+  stop();
+  while (get().running) await new Promise((r) => setTimeout(r, 20));
+  if (isSimulator()) { (link as MockLink).dut = get().simDut; (link as MockLink).reversed = dir === "rev"; }
+  set({ running: true, progress: 0 });
+  try {
+    const d = await acquire();
+    set((s) => ({ twoPort: { ...s.twoPort, [dir]: d, result: null } }));
+    log(dir === "fwd" ? tr("Forward sweep measured ({0} points).", d.length) : tr("Reversed sweep measured ({0} points).", d.length));
+  } catch (e) { if (!(e instanceof AbortError)) log(tr("Sweep failed: {0}", errMsg(e)), "error"); }
+  finally {
+    if (isSimulator()) (link as MockLink).reversed = false;
+    set({ running: false });
+  }
+}
+
+/** Combine the forward and reversed sweeps (cal + fixture applied) into full S-parameters. */
+export function buildFlip() {
+  const s = get();
+  const { fwd, rev } = s.twoPort;
+  if (!fwd || !rev) { log(tr("Measure both orientations first."), "error"); return; }
+  try {
+    const terms = s.calEnabled && !s.deviceCal ? s.terms : null;
+    const result = applyFixture(combineFlip(fwd, rev, terms), s.fixture);
+    set({ twoPort: { fwd, rev, result } });
+    log(tr("Full 2-port S-parameters built ({0} points).", result.length));
+  } catch (e) { log(tr("2-port: {0}", errMsg(e)), "error"); }
+}
+
+/** Assume a symmetric reciprocal DUT: S12 = S21, S22 = S11 of the current (corrected) sweep. */
+export function fakeFlipCurrent() {
+  const d = get().data;
+  if (!d.length) { log(tr("Nothing to use yet: sweep first."), "error"); return; }
+  set((s) => ({ twoPort: { ...s.twoPort, result: fakeFlip(d) } }));
+  log(tr("Assumed a symmetric DUT: S12 = S21, S22 = S11."));
+}
+
+export function clearTwoPort() { set({ twoPort: { fwd: null, rev: null, result: null } }); }
+
+export function exportFull2Port(fmt: "RI" | "MA" | "DB" = "RI") {
+  const r = get().twoPort.result;
+  if (!r) { log(tr("Build the 2-port S-parameters first."), "error"); return; }
+  const name = `${get().autoSaveName || "webvna"}-2port-${stamp()}.s2p`;
+  download(name, writeTouchstone(r, 2, `WebVNA ${get().info?.model ?? ""} full 2-port (flip DUT)`, fmt));
+  log(tr("Saved {0}", name));
+}
+
+export function flipAsOverlay() {
+  const r = get().twoPort.result;
+  if (!r) { log(tr("Build the 2-port S-parameters first."), "error"); return; }
+  set((s) => ({ refs: [...s.refs, { name: "2-port", data: r, ports: 2, visible: true, color: TRACE_COLORS[(s.refs.length + 2) % 4] }] }));
+  log(tr("Added the 2-port result as an overlay (Display tab)."));
+}
 
 /* ------------------------------------------------------------------ memories and references */
 

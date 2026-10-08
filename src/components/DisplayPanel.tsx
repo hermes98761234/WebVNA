@@ -26,7 +26,7 @@ export function DisplayPanel() {
           <div key={i} className="row trace-row" style={{ background: i === s.activeTrace ? "var(--panel2)" : undefined, borderRadius: 6, padding: "2px 4px" }}>
             <input type="checkbox" checked={tr.enabled} onChange={(e) => updateTrace(i, { enabled: e.target.checked })} aria-label={tl("Trace {0} on", i + 1)} />
             <button className={"small" + (i === s.activeTrace ? " on" : "")} onClick={() => set({ activeTrace: i })}>TR{i + 1}</button>
-            <Select value={tr.channel} options={[["s11", "S11"], ["s21", "S21"]]} onChange={(v) => updateTrace(i, { channel: v })} ariaLabel={tl("Trace {0} channel", i + 1)} />
+            <Select value={tr.channel} options={[["s11", "S11"], ["s21", "S21"], ["s12", "S12"], ["s22", "S22"]]} onChange={(v) => updateTrace(i, { channel: v })} ariaLabel={tl("Trace {0} channel", i + 1)} />
             <Select className="fmt" value={tr.format} options={FORMATS.map((f) => [f.id, tl(f.label)] as [typeof f.id, string])} onChange={(v) => setTraceFormat(i, v)} ariaLabel={tl("Trace {0} format", i + 1)} />
             <input type="color" value={tr.color} onChange={(e) => updateTrace(i, { color: e.target.value })} aria-label={tl("Trace {0} colour", i + 1)} />
           </div>
