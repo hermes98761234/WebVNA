@@ -2,6 +2,7 @@
 import { C, type Complex } from "./complex";
 import { DATA_MODE, OP, REG, fifoChecksum, identify, isForbiddenWrite, le, MIN_HZ, type DeviceInfo } from "./protocol";
 import type { LinkBase } from "./links";
+import type { DriverCapabilities, VnaDriver } from "./driver";
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -18,7 +19,7 @@ export interface SweepOptions {
 
 export class AbortError extends Error { constructor() { super("Sweep stopped."); this.name = "AbortError"; } }
 
-export class LiteVNA {
+export class LiteVNA implements VnaDriver {
   readonly link: LinkBase;
   info: DeviceInfo | null = null;
   stats = { records: 0, badChecksum: 0, zeroChecksum: 0, sweeps: 0, lastSweepMs: 0 };
@@ -26,6 +27,13 @@ export class LiteVNA {
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(link: LinkBase) { this.link = link; }
+
+  get capabilities(): DriverCapabilities {
+    return {
+      protocol: "v2", maxPoints: this.info?.maxPoints ?? 1024, minHz: MIN_HZ, maxHz: this.info?.maxHz ?? 3e9,
+      screenshot: true, battery: true, ifAverage: true, power: true, channels: true, deviceCal: true, serial: true, clock: true,
+    };
+  }
 
   /** Serialise device access: every public operation runs exclusively. */
   exclusive<T>(fn: () => Promise<T>): Promise<T> {
