@@ -27,8 +27,8 @@ NanoVNA-App and NanoVNA-Saver are desktop programs. WebVNA does the same job in 
 - **2-port:** full 2-port Touchstone import/export, fixture de-embedding/embedding (Touchstone, lumped R/L/C, transmission line), a flip-DUT wizard for full S-parameters on a one-path instrument, Touchstone files as calibration standards.
 - **Files:** Touchstone `.s1p`/`.s2p` (RI/MA/DB) and CSV export/import, auto-save to a folder, chart PNG, session files (`.webvna.json`) and shareable links (`#s=…`).
 - **Offline and mobile:** installable PWA that works offline, touch gestures on the charts (drag, pinch, double-tap). See [docs/ANDROID.md](docs/ANDROID.md).
-- **Devices:** LiteVNA / NanoVNA V2 (binary protocol) and, experimentally, NanoVNA V1 / -H / -H4 (text shell; NanoVNA-D firmware is best, stock firmware sweeps 101 points). The protocol is detected on connect, and controls the device lacks (screenshot, battery, IF averaging, power, channels, device calibration) are hidden. A Bluetooth serial module can be used where the browser supports Web Serial over Bluetooth (Chrome on Android, experimental).
-- **Simulator:** byte-level emulators of the LiteVNA and of the NanoVNA-H / -H4 shell (NanoVNA-D and stock firmware) with antenna, filter, crystal, cable, RLC and calibration-standard DUTs. Try everything without hardware.
+- **Devices:** LiteVNA / NanoVNA V2 (binary protocol) and, experimentally, NanoVNA V1 / -H / -H4 (text shell; NanoVNA-D firmware is best, stock firmware sweeps 101 points) and LibreVNA over WebUSB (experimental, simulator-tested only). The protocol is detected on connect, and controls the device lacks (screenshot, battery, IF averaging, power, channels, device calibration) are hidden. A Bluetooth serial module can be used where the browser supports Web Serial over Bluetooth (Chrome on Android, experimental).
+- **Simulator:** byte-level emulators of the LiteVNA, of the NanoVNA-H / -H4 shell (NanoVNA-D and stock firmware) and of the LibreVNA packet protocol with antenna, filter, crystal, cable, RLC and calibration-standard DUTs. Try everything without hardware.
 - **Scripting:** a `window.webvna` API and an in-app Script tab (see [Scripting API](#scripting-api)).
 - **Languages:** English and Ukrainian ([adding one](docs/TRANSLATING.md)).
 
@@ -119,7 +119,7 @@ const ts = webvna.exportTouchstone(2, "RI");  // string, also exportCsv()
 | Call | Result |
 |---|---|
 | `version` | API version string |
-| `connectSimulator({model?, dut?})`, `connect()`, `disconnect()` | model: `litevna`, `nanovna-h`, `nanovna-h4`, `nanovna-stock` |
+| `connectSimulator({model?, dut?})`, `connect()`, `disconnect()` | model: `litevna`, `nanovna-h`, `nanovna-h4`, `nanovna-stock`, `librevna` |
 | `setStimulus({start, stop, points?, mode?, cwFreq?})` | clamps to the device's range, returns the applied stimulus |
 | `sweep()`, `run()`, `stop()` | `sweep()` resolves with the newly acquired, corrected points |
 | `raw()`, `data()` | last raw / calibrated sweep |

@@ -22,12 +22,15 @@ Environment quirks in this setup:
 ```
 src/lib/              NO DOM, NO React, NO i18n. Runs in Node (vitest)
   protocol.ts         opcodes, registers, checksum, identify(), isForbiddenWrite()
-  links.ts            LinkBase (byte queue + read(n, timeout)), SerialLink (Web Serial), UsbLink (WebUSB)
+  links.ts            LinkBase (byte queue + read(n, timeout)), SerialLink (Web Serial), UsbLink (WebUSB CDC), WebUsbBulkLink (WebUSB vendor bulk, LibreVNA)
   litevna.ts          LiteVNA driver: init, read/write regs, sweepSegments (≤1024/segment), screenshot, extras; planSegments() for linear/log/CW
   driver.ts           VnaDriver interface, DriverCapabilities, splitSegments()
   detect.ts           detectProtocol() (V2 vs shell) and createDriver()
   nanovna.ts          NanoVNAShell: V1/-H/-H4 text-shell driver (experimental), isForbiddenShellCommand()
   mock-shell.ts       MockShellLink: shell simulator (H/H4, NanoVNA-D/stock)
+  libre-protocol.ts   LibreVNA packet framing (CRC32, FrameParser), payload codecs, isForbiddenLibrePacket(), USB ids (all assumptions in the header)
+  librevna.ts         LibreVNA driver (experimental, WebUSB; chosen by USB id, not probed)
+  mock-libre.ts       MockLibreLink: LibreVNA packet simulator (simModel "librevna")
   mock.ts             MockLink simulator with the same byte protocol; DUTs: antenna, filter, crystal, cable, rlc, open/short/load/thru/isolation
   calibration.ts      SOL (closed-form ideal + general 3×3 with cal-kit models), response/isolation/thru, enhanced response, interpolation, e-delay, JSON
   formats.ts          27 trace formats (FORMATS/FORMAT_BY_ID), impedance(), swr() (Infinity when |Γ|≥1), groupDelay(), traceValues()
@@ -94,7 +97,7 @@ src/components/       Toolbar, *Panel (sidebar tabs), RectChart/SmithChart (canv
 
 ## Ideas / not done
 - **Firmware:** DFU flashing (deliberately out; brick risk).
-- **Drivers:** LibreVNA driver; a WebSocket bridge to remote or SCPI-style instruments.
+- **Drivers:** a WebSocket bridge to remote or SCPI-style instruments.
 - **Calibration:** the NanoVNA-Saver `.cal` format.
 - **Display:**
   - SWR on a log axis.

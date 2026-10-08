@@ -14,15 +14,16 @@ export function DevicePanel() {
   const caps = s.capabilities;
   const has = (k: "screenshot" | "battery" | "ifAverage" | "power" | "channels" | "deviceCal" | "serial" | "clock") => !caps || caps[k];
   const shell = caps?.protocol === "v1-shell";
+  const libre = caps?.protocol === "libre";
   return (
     <div>
       <Section title="Device">
         {s.info ? (
           <div className="kv">
             <span>{t("Model")}</span><span>{s.info.model}</span>
-            {shell ? <>
+            {shell || libre ? <>
               <span>{t("Firmware")}</span><span>{s.info.firmware || "—"}</span>
-              <span>{t("Protocol")}</span><span>{t("NanoVNA V1/H/H4 text shell (experimental)")}</span>
+              <span>{t("Protocol")}</span><span>{libre ? t("LibreVNA packet protocol {0} (experimental)", s.info.protocol) : t("NanoVNA V1/H/H4 text shell (experimental)")}</span>
             </> : <>
               <span>{t("Hardware rev")}</span><span>{s.info.hardware}</span>
               <span>{t("Firmware")}</span><span>{s.info.fwMajor}.{s.info.fwMinor}</span>

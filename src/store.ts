@@ -21,8 +21,8 @@ import { sanitizePersisted } from "./validate";
 export type ConnStatus = "disconnected" | "connecting" | "connected";
 export type SweepMode = "linear" | "log" | "cw";
 export type MeasureMode = "off" | "lcmatch" | "cable" | "serieslc" | "shuntlc" | "xtal" | "filter" | "resonance" | "stats";
-export type SimModel = "litevna" | "nanovna-h" | "nanovna-h4" | "nanovna-stock";
-export const SIM_MODELS: SimModel[] = ["litevna", "nanovna-h", "nanovna-h4", "nanovna-stock"];
+export type SimModel = "litevna" | "nanovna-h" | "nanovna-h4" | "nanovna-stock" | "librevna";
+export const SIM_MODELS: SimModel[] = ["litevna", "nanovna-h", "nanovna-h4", "nanovna-stock", "librevna"];
 export type MemorySlot = "A" | "B" | "C" | "D";
 export const MEMORY_SLOTS: MemorySlot[] = ["A", "B", "C", "D"];
 

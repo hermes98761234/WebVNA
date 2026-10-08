@@ -23,4 +23,5 @@ export const SIM_MODEL_LABEL: Record<SimModel, string> = {
   "nanovna-h": "NanoVNA-H (NanoVNA-D firmware)",
   "nanovna-h4": "NanoVNA-H4 (NanoVNA-D firmware)",
   "nanovna-stock": "NanoVNA-H (stock firmware)",
+  librevna: "LibreVNA (experimental)",
 };
