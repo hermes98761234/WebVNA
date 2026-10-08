@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { pwaPlugin } from './pwa-plugin.ts'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,5 +10,7 @@ export default defineConfig({
   test: {
     // Hardware tests talk to a real device; give them room.
     testTimeout: 30000,
+    // Agent/git worktrees live under .claude/; never collect their copies of the tests.
+    exclude: [...configDefaults.exclude, '.claude/**'],
   },
 })
