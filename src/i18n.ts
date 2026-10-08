@@ -634,6 +634,18 @@ const UK: Record<string, string> = {
   "Open session…": "Відкрити сесію…",
   "Copy share link": "Копіювати посилання",
   "A session file holds settings, calibration, fixture, memories, references and the current sweep, so it can be opened without a device. A share link carries only the corrected sweep and display settings.": "Файл сесії містить налаштування, калібрування, оснащення, пам'ять, еталонні криві та поточну розгортку, тож його можна відкрити без пристрою. Посилання містить лише скориговану розгортку та налаштування відображення.",
+  // bridge + release
+  "Automation bridge": "Міст автоматизації",
+  "Connect to the local bridge": "Підключитися до локального моста",
+  "Port": "Порт",
+  "Token (optional)": "Токен (необов'язково)",
+  "Bridge token": "Токен моста",
+  "Bridge port": "Порт моста",
+  "Status": "Стан",
+  "Connected": "Підключено",
+  "Disconnected": "Відключено",
+  "Lets a script on this computer (for example Python) call the WebVNA API through tools/ws-bridge.mjs. The page connects to 127.0.0.1 only and only the documented API methods can be called. Off until you enable it; keep this page open. See the README, \"Automation bridge\".": "Дозволяє скрипту на цьому комп'ютері (наприклад Python) викликати API WebVNA через tools/ws-bridge.mjs. Сторінка підключається лише до 127.0.0.1, і можна викликати лише методи задокументованого API. Вимкнено, доки ви не ввімкнете; тримайте цю сторінку відкритою. Див. README, \"Automation bridge\".",
+  "WebVNA v{0}": "WebVNA v{0}",
 };
 
 export { UK };

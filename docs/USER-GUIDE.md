@@ -123,6 +123,12 @@ webvna.run();
 
 Only run scripts you trust: they can control the connected device.
 
+### Automation bridge (Python)
+
+To drive WebVNA from a Python script on the same computer, run `node tools/ws-bridge.mjs --token SECRET` (Node 22 or newer), then on the **Script** tab, under **Automation bridge**, enter the port (8765) and token and tick *Connect to the local bridge*. The status line shows *Connected*. A script then connects to `ws://127.0.0.1:8765/client?token=SECRET` and calls the API methods; `tools/webvna_client.py` (`pip install websockets`) wraps this as `WebVNA(url).call("sweep")`. See the README, "Automation bridge (Python)", for the message format.
+
+The bridge is off every time the page loads, listens on localhost only, and allows just the documented API calls (not arbitrary code). The WebVNA page has to stay open while a script runs. Use a token if other people use the computer.
+
 ## Keyboard and touch
 
 | Action | Input |

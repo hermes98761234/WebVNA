@@ -58,6 +58,7 @@ export function FilesPanel() {
         </div>
         <button className="danger" onClick={() => resetSettings()}>{t("Reset all settings")}</button>
         <p className="hint">{t("Settings and saved calibrations are kept in this browser.")}</p>
+        <p className="hint">{t("WebVNA v{0}", __APP_VERSION__)}</p>
       </Section>
     </div>
   );

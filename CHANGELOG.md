@@ -2,9 +2,9 @@
 
 All notable changes to WebVNA are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/). Releases are tagged `vX.Y.Z`.
 
-## [Unreleased] (0.3.0)
+## [Unreleased]
 
-`package.json` still says `0.2.0`: bump it to `0.3.0` when the release is cut, then tag `v0.3.0`.
+## [0.3.0] - 2026-10-08
 
 ### Added
 
@@ -53,5 +53,6 @@ Baseline feature set.
 - **Simulator** of the LiteVNA with antenna, filter, crystal, cable, RLC and calibration-standard DUTs.
 - English and Ukrainian UI.
 
-[Unreleased]: https://github.com/vkopitsa/WebVNA/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/vkopitsa/WebVNA/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/vkopitsa/WebVNA/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vkopitsa/WebVNA/releases/tag/v0.2.0

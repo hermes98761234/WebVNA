@@ -90,7 +90,13 @@ Stack: React 19, TypeScript, Vite, zustand, vitest. No runtime dependencies besi
 
 ### Releases
 
-Releases are tagged `vX.Y.Z` (semantic versioning); what changed is in [CHANGELOG.md](CHANGELOG.md). Bump `version` in `package.json` when tagging.
+Releases are tagged `vX.Y.Z` (semantic versioning); what changed is in [CHANGELOG.md](CHANGELOG.md). The version is shown in the app (Files tab, Settings).
+
+To cut a release:
+
+1. Bump `version` in `package.json` (and `package-lock.json`).
+2. In `CHANGELOG.md`, move the entries from `## [Unreleased]` into a new `## [X.Y.Z] - YYYY-MM-DD` section and update the link references at the bottom.
+3. Merge to `main`. The **Release** workflow (`.github/workflows/release.yml`) reads the version from `package.json`; if the tag `vX.Y.Z` does not exist yet it runs `npm ci`, `npm test` and `npm run build`, zips `dist/` as `webvna-vX.Y.Z.zip`, takes the matching CHANGELOG section (`scripts/changelog-section.mjs X.Y.Z`) as the release notes, and creates the tag and the GitHub Release with the zip attached. It can also be started by hand (workflow_dispatch). If the tag exists, it does nothing.
 
 ### Contributing
 
@@ -142,6 +148,32 @@ with sync_playwright() as p:
     data = page.evaluate("webvna.setStimulus({ start: 400e6, stop: 470e6, points: 101 }), webvna.sweep()")
     print(len(data), data[0]["f"])
 ```
+
+### Automation bridge (Python)
+
+A browser page can't listen on a port, so scripts reach it through a small relay that the page connects out to. `tools/ws-bridge.mjs` is a dependency-free WebSocket relay for Node 22 or newer:
+
+```bash
+node tools/ws-bridge.mjs --port 8765 --token SECRET   # token optional; --origin https://your.host limits the page
+```
+
+Then open WebVNA, go to the **Script** tab, and under **Automation bridge** set the same port and token and tick *Connect to the local bridge*. The status shows *Connected*; the page reconnects every 2 s while the option is on. It is off at every page load.
+
+A client connects to `ws://127.0.0.1:8765/client?token=SECRET` and sends `{"id": 1, "method": "sweep", "params": {}}`; the answer is `{"id": 1, "result": ...}` or `{"id": 1, "error": {"message": ...}}`. Methods are the API calls above: `connectSimulator`, `setStimulus`, `sweep`, `run`, `stop`, `disconnect`, `raw`, `data`, `markers`, `setMarker`, `trace`, `limits`, `exportTouchstone`, `exportCsv`, `state`, `setState`. `params` is an object with the named arguments (`setMarker`: `i`, `f`; `trace` and `limits`: `i`; `exportTouchstone`: `ports`, `fmt`; `connectSimulator`, `setStimulus` and `setState`: the options object itself) or an array of positional arguments. `connect()` (needs a click) and `on()` are not callable. Clients also receive `{"event": "sweep", "data": {count, points, ms}}` after each sweep and `{"event": "app", "data": {"connected": bool}}`. Infinite values (SWR) arrive as the strings `"Infinity"`.
+
+```python
+# pip install websockets
+from webvna_client import WebVNA   # tools/webvna_client.py
+
+with WebVNA("ws://127.0.0.1:8765/client?token=SECRET") as vna:
+    vna.call("connectSimulator", dut="antenna")
+    vna.call("setStimulus", start=400e6, stop=470e6, points=101)
+    vna.call("sweep")
+    swr = vna.call("trace", i=1)
+    print(min(float(v) for v in swr["values"]))
+```
+
+`python tools/webvna_client.py` runs this as an example. Security: the relay binds to `127.0.0.1` only; set `--token` on a shared machine, since any local program that knows the port can drive the connected device; browser pages are refused on `/client` (they always send an `Origin` header); only the whitelisted API methods run (no arbitrary code); and the WebVNA page must stay open.
 
 ## Safety
 
