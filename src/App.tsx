@@ -12,6 +12,7 @@ import { RectChart } from "./components/RectChart";
 import { SmithChart } from "./components/SmithChart";
 import { MarkerTable } from "./components/MarkerTable";
 import { LogPanel } from "./components/LogPanel";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useT, tr } from "./i18n";
 import { disconnect, hasWebSerial, reconnectKnown, restoreActiveCal, updateMarkers } from "./controller";
 
@@ -80,6 +81,7 @@ export default function App() {
           </div>
         </main>
       </div>
+      <UpdatePrompt />
     </div>
   );
 }

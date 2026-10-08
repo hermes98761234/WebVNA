@@ -66,7 +66,7 @@ const UK: Record<string, string> = {
   "No rectangular traces enabled.": "Немає увімкнених прямокутних трас.",
   "Connect and press Sweep (or use the simulator).": "Підключіть пристрій і натисніть «Розгортка» (або скористайтеся симулятором).",
   "ref {0}": "оп. {0}",
-  "Rectangular chart. Drag to move the active marker, Shift-drag to zoom, double-click to auto-scale.": "Прямокутний графік. Перетягніть, щоб перемістити активний маркер; Shift+перетягування — масштабування; подвійний клік — автомасштаб.",
+  "Rectangular chart. Drag to move the active marker, Shift-drag to zoom, double-click to auto-scale. Touch: drag to move the marker, pinch to zoom, double-tap to auto-scale.": "Прямокутний графік. Перетягніть, щоб перемістити активний маркер; Shift+перетягування — масштабування; подвійний клік — автомасштаб. Дотик: перетягування — маркер, щипок — масштаб, подвійний дотик — автомасштаб.",
   "Save chart as PNG": "Зберегти графік як PNG",
   "Fullscreen": "На весь екран",
   "Sweep to see marker readouts.": "Виконайте розгортку, щоб побачити показання маркерів.",
@@ -425,6 +425,12 @@ const UK: Record<string, string> = {
   "RETURN LOSS": "ЗАТУХАННЯ ВІДБИТТЯ",
   "MISMATCH LOSS": "ВТРАТИ НЕУЗГОДЖЕННЯ",
   "GAIN": "ПІДСИЛЕННЯ",
+  "Update available": "Доступне оновлення",
+  "Reload": "Перезавантажити",
+  "Dismiss": "Закрити",
+  "Ready to work offline": "Готово до роботи офлайн",
+  "Install WebVNA as an app": "Встановити WebVNA як застосунок",
+  "Install app": "Встановити",
 };
 
 export { UK };
