@@ -242,9 +242,12 @@ export function parseCal(text: string): CalData {
   if (o?.format !== "webvna-cal" || !Array.isArray(o.freqs) || !o.freqs.length || !o.freqs.every((f: unknown) => Number.isFinite(f))) throw bad();
   for (const k of ["open", "short", "load", "isolation", "thru", "thru11"])
     if (o[k] != null && (!Array.isArray(o[k]) || o[k].length !== o.freqs.length || !o[k].every(isPair))) throw bad();
+  if (!o.freqs.every((f: number, i: number) => i === 0 || f > o.freqs[i - 1])) throw bad(); // interpolation and calCovers need ascending freqs
+  for (const k of ["name", "created"]) if (o[k] != null && typeof o[k] !== "string") throw bad();
+  if (o.enhancedResponse != null && typeof o.enhancedResponse !== "boolean") throw bad();
   if (o.kit != null && (typeof o.kit !== "object" || Array.isArray(o.kit))) throw bad();
   const k = o.kit ?? {};
   const kit: CalKit = { name: typeof k.name === "string" ? k.name : IDEAL_KIT.name, open: kitSection(IDEAL_KIT.open, k.open), short: kitSection(IDEAL_KIT.short, k.short), load: kitSection(IDEAL_KIT.load, k.load), thru: kitSection(IDEAL_KIT.thru, k.thru) };
   delete o.format; delete o.version;
-  return { enhancedResponse: false, ...o, kit } as CalData;
+  return { name: "", created: "", enhancedResponse: false, ...o, kit } as CalData;
 }

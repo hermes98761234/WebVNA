@@ -35,12 +35,10 @@ export const USB_IDS = [
 export function isForbiddenWrite(addr: number, op: number, value?: number | readonly number[]): boolean {
   if (op === OP.WRITEFIFO) return true;
   const n = op >= OP.WRITE && op <= OP.WRITE8 ? 1 << (op - OP.WRITE) : 1;
+  const bytes = typeof value === "number" ? le(value, n) : value; // a packed number is written little-endian
   for (let a = addr; a < addr + n; a++) {
     if (a >= 0xe0 && a <= 0xef && a !== REG.CAPTURE) return true;
-    if (a === REG.DATA_MODE) {
-      const v = typeof value === "number" ? (a === addr ? value : undefined) : value?.[a - addr];
-      if (v === DATA_MODE.RAW) return true;
-    }
+    if (a === REG.DATA_MODE && bytes?.[a - addr] === DATA_MODE.RAW) return true;
   }
   return false;
 }

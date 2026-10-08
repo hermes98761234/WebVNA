@@ -21,20 +21,22 @@ beforeEach(() => { mem.clear(); vi.resetModules(); });
 afterEach(() => vi.restoreAllMocks());
 
 describe("store", () => {
-  it("loadPersisted drops malformed values and keeps good ones", async () => {
+  it("loadPersisted replaces malformed fields with defaults and keeps good ones", async () => {
     mem.set(SETTINGS, JSON.stringify({ traces: null, markers: [], kit: {}, tdr: { enabled: true }, points: 401, start: "x", stop: NaN, sweepMode: "log" }));
     const { useStore, initialState } = await import("./store");
     const s = useStore.getState();
     expect(s.traces).toEqual(initialState.traces);
     expect(s.markers).toHaveLength(8);
     expect(s.kit).toEqual(initialState.kit);
-    expect(s.tdr).toEqual(initialState.tdr);
+    expect(s.tdr).toEqual({ ...initialState.tdr, enabled: true }); // fields missing from an older save take the default
     expect(s.start).toBe(initialState.start);
     expect(s.points).toBe(401);
     expect(s.sweepMode).toBe("log");
-    mem.set(SETTINGS, JSON.stringify({ traces: [{ enabled: true }, {}, {}, {}] }));
+    mem.set(SETTINGS, JSON.stringify({ traces: [{ enabled: false, color: "#123456" }, { format: "bogus", color: "#000000" }], markers: [{ f: 1e8 }] }));
     vi.resetModules();
-    expect((await import("./store")).useStore.getState().traces).toEqual(initialState.traces);
+    const t = (await import("./store")).useStore.getState();
+    expect(t.traces).toEqual([{ ...initialState.traces[0], enabled: false, color: "#123456" }, ...initialState.traces.slice(1)]); // unknown format → default trace
+    expect(t.markers).toEqual([{ ...initialState.markers[0], f: 1e8 }, ...initialState.markers.slice(1)]);
   });
   it("resetSettings also forgets the active calibration", async () => {
     mem.set(ACTIVE_CAL, "{}");
@@ -98,6 +100,7 @@ describe("display", () => {
     expect(zText(p, "s11", "rpxp")).toBe("∞ Ω");
     expect(zText(p, "s11", "gb")).toBe("0 S + j0 S");
     expect(zText(p, "s11", "lin")).toBe("1.0000 ∠ 0.00°");
+    expect(zText({ ...p, s11: [NaN, NaN] }, "s11", "rx")).not.toContain("∞"); // a missing point is not an open
   });
   it("autoScale keeps the floor when every value is ∞", async () => {
     const { autoScale } = await import("./display");

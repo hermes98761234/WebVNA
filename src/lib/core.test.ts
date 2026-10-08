@@ -84,6 +84,8 @@ describe("device driver (simulator)", () => {
     expect(isForbiddenWrite(REG.CAPTURE, OP.WRITE)).toBe(false);
     expect(isForbiddenWrite(0x1f, OP.WRITE8, [0, 0, 0, 0, 0, 0, 0, DATA_MODE.RAW])).toBe(true); // 8th byte hits DATA_MODE
     expect(isForbiddenWrite(0x1f, OP.WRITE8, [0, 0, 0, 0, 0, 0, 0, 0])).toBe(false);
+    expect(isForbiddenWrite(0x25, OP.WRITE2, 0x0100)).toBe(true); // packed number: high byte lands on DATA_MODE
+    expect(isForbiddenWrite(0x25, OP.WRITE2, 0x0001)).toBe(false);
   });
   it("log plan is strictly increasing and stays within the span", () => {
     const expand = (segs: ReturnType<typeof planSegments>) =>
@@ -202,6 +204,14 @@ describe("formats and analysis", () => {
     const sols = lcMatch([20, 30], 100e6);
     expect(sols.length).toBeGreaterThan(0);
   });
+  it("an exact open has Y = 0 and no L/C match", () => {
+    const z = impedance([1, 0], "s11");
+    expect(z[0]).toBe(Infinity);
+    expect(C.inv(z)).toEqual([0, 0]);
+    expect(formatValue("g", [1, 0], 1e8, "s11")).toBe(0);
+    expect(lcMatch(z, 100e6)).toEqual([]);
+    expect(lcMatch([NaN, NaN], 100e6)).toEqual([]);
+  });
   it("analyses a band-pass filter", () => {
     const d = Array.from({ length: 801 }, (_, i) => { const f = 100e6 + i * 0.1e6; return { f, ...dutS("filter", f) }; });
     const r = filterAnalysis(d)!;
@@ -282,11 +292,24 @@ describe("files and units", () => {
     expect(parseSI("5#")).toBeNull();
   });
   it("rejects malformed Touchstone rows and bad reference impedances", () => {
-    expect(() => parseTouchstone("# HZ S RI R 50\n1 0.5 0 foo\n2 0.5 0\n")).toThrow(/row 1/);
-    expect(() => parseTouchstone("# hz s ri r 50\nnot a number\n")).toThrow(/row 1/);
+    expect(() => parseTouchstone("# HZ S RI R 50\n1 0.5 0 foo\n2 0.5 0\n")).toThrow(/line 2/);
+    expect(() => parseTouchstone("# hz s ri r 50\nnot a number\n")).toThrow(/line 2/);
+    expect(() => parseTouchstone("# HZ S RI R 50\n1 0.5 0\n2 0.5\n")).toThrow(/Truncated/);
     expect(parseTouchstone("# MHZ S RI R abc\n1 0.5 0\n").z0).toBe(50);
     expect(parseTouchstone("# MHZ S RI R 0\n1 0.5 0\n").z0).toBe(50);
     expect(parseTouchstone("# MHZ S RI R 75\n1 1 0\n").data[0].s11).toEqual([1, 0]); // exact open survives renormalisation
+  });
+  it("reads wrapped 2-port rows and stops at a noise-parameter block", () => {
+    const row = (f: number) => `${f} 0.5 0 0.1 0\n 0.1 0 0.2 0`;
+    const wrapped = parseTouchstone(`# MHZ S RI R 50\n${row(1)}\n${row(2)}\n`, "amp.s2p");
+    expect(wrapped.data.map((p) => p.f)).toEqual([1e6, 2e6]);
+    expect(wrapped.data[1].s21).toEqual([0.1, 0]);
+    // Touchstone 1.x noise block: 5 numbers per row, frequency restarts.
+    const v1 = `# MHZ S RI R 50\n1 0.5 0 0.1 0 0.1 0 0.2 0\n2 0.5 0 0.1 0 0.1 0 0.2 0\n! noise\n1 1.5 0.3 45 0.2\n2 1.6 0.3 50 0.2\n`;
+    expect(parseTouchstone(v1, "amp.s2p").data).toHaveLength(2);
+    expect(parseTouchstone(v1.replace(/2 1.6.*\n$/, ""), "amp.s2p").data).toHaveLength(2); // a single short noise row
+    const v2 = `[Version] 2.0\n# MHZ S RI R 50\n[Number of Ports] 2\n[Network Data]\n1 0.5 0 0.1 0 0.1 0 0.2 0\n[Noise Data]\n1 1.5 0.3 45 0.2\n[End]\n`;
+    expect(parseTouchstone(v2, "amp.s2p").data).toHaveLength(1);
   });
   it("rejects malformed calibration files", () => {
     const base = '"format":"webvna-cal","freqs":[1,2],"open":[[0,0],[0,0]],"short":[[0,0],[0,0]],"load":[[0,0],[0,0]]';
@@ -302,6 +325,9 @@ describe("files and units", () => {
       expect(cal.kit.thru.delayPs).toBe(0);
       expect(() => computeErrorTerms(cal)).not.toThrow();
     }
+    for (const extra of ['"enhancedResponse":"false"', '"name":5', '"created":{}'])
+      expect(() => parseCal(`{${base},${extra}}`)).toThrow("Not a WebVNA calibration file.");
+    expect(() => parseCal(`{${base.replace('"freqs":[1,2]', '"freqs":[2,1]')}}`)).toThrow("Not a WebVNA calibration file."); // descending
     expect(parseCal(`{${base},"kit":{"name":"SMA","open":{"c0":50}}}`).kit).toEqual({ ...IDEAL_KIT, name: "SMA", open: { ...IDEAL_KIT.open, c0: 50 } });
   });
 });

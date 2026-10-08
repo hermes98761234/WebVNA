@@ -1,5 +1,5 @@
 // Turns state into plot-ready series, shared by charts and the marker table.
-import { C, ZERO } from "./lib/complex";
+import { C } from "./lib/complex";
 import type { SweepPoint } from "./lib/litevna";
 import { FORMAT_BY_ID, impedance, reactanceComponent, traceValues, type FormatId } from "./lib/formats";
 import { timeDomain } from "./lib/tdr";
@@ -112,14 +112,14 @@ export function zText(s: SweepPoint, ch: "s11" | "s21", mode: SmithReadout = "rl
   const g = s[ch];
   const z = impedance(g, ch);
   const deg = (C.arg(g) * 180) / Math.PI;
-  const open = !isFinite(z[0]); // exact open: Z = ∞, Y = 0
+  const open = z[0] === Infinity; // exact open: Z = ∞, Y = 0 (NaN stays NaN)
   if (open && (mode === "rx" || mode === "rlc" || mode === "rpxp" || mode === "rplc")) return "∞ Ω";
   switch (mode) {
     case "rx": return `${z[0].toFixed(2)} ${sgn(z[1])} j${Math.abs(z[1]).toFixed(2)} Ω`;
     case "lin": return `${C.abs(g).toFixed(4)} ∠ ${deg.toFixed(2)}°`;
     case "log": return `${(20 * Math.log10(Math.max(C.abs(g), 1e-12))).toFixed(2)} dB ∠ ${deg.toFixed(2)}°`;
     case "reim": return `${g[0].toFixed(4)} ${sgn(g[1])} j${Math.abs(g[1]).toFixed(4)}`;
-    case "gb": { const y = open ? ZERO : C.inv(z); return `${si(y[0], "S", 3)} ${sgn(y[1])} j${si(Math.abs(y[1]), "S", 3)}`; }
+    case "gb": { const y = C.inv(z); return `${si(y[0], "S", 3)} ${sgn(y[1])} j${si(Math.abs(y[1]), "S", 3)}`; }
     case "rpxp": case "rplc": {
       const y = C.inv(z);
       const rp = 1 / (y[0] || 1e-30), xp = -1 / (y[1] || 1e-30);

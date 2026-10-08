@@ -25,8 +25,11 @@ export interface TouchstoneFile { ports: number; z0: number; data: SweepPoint[];
 export function parseTouchstone(text: string, nameHint = ""): TouchstoneFile {
   let unit = 1e9, fmt = "MA", z0 = 50, ports = /\.s2p$/i.test(nameHint) ? 2 : /\.s1p$/i.test(nameHint) ? 1 : 0;
   const comments: string[] = [];
-  const rows: number[][] = [];
-  for (const raw of text.split(/\r?\n/)) {
+  const nums: number[] = [];
+  let firstRowLen = 0;
+  const lines = text.split(/\r?\n/);
+  for (let ln = 0; ln < lines.length; ln++) {
+    const raw = lines[ln];
     const ci = raw.indexOf("!");
     if (ci >= 0) comments.push(raw.slice(ci + 1).trim());
     const line = (ci >= 0 ? raw.slice(0, ci) : raw).trim();
@@ -41,26 +44,39 @@ export function parseTouchstone(text: string, nameHint = ""): TouchstoneFile {
       }
       continue;
     }
-    if (line.startsWith("[")) continue; // Touchstone 2.0 keywords
-    rows.push(line.split(/\s+/).map(parseFloat));
+    if (/^\[(noise data|end)\]/i.test(line)) break; // Touchstone 2.0: noise parameters follow / end of data
+    if (line.startsWith("[")) continue; // other Touchstone 2.0 keywords
+    const toks = line.split(/\s+/);
+    if (!firstRowLen) firstRowLen = toks.length;
+    for (const tok of toks) {
+      const v = parseFloat(tok);
+      if (!Number.isFinite(v)) throw new Error(`Malformed number "${tok}" on line ${ln + 1}.`);
+      nums.push(v);
+    }
   }
   // Guess from the row width of the data: 3 → 1-port, 9 → 2-port.
-  if (!ports) ports = rows[0] && rows[0].length >= 9 ? 2 : 1;
+  if (!ports) ports = firstRowLen >= 9 ? 2 : 1;
   const per = ports === 1 ? 3 : 9;
   const toC = (a: number, b: number): Complex => {
     if (fmt === "RI") return [a, b];
     const m = fmt === "DB" ? Math.pow(10, a / 20) : a;
     return C.polar(m, (b * Math.PI) / 180);
   };
-  const data: SweepPoint[] = rows.map((r, i) => {
-    if (r.length !== per || !r.every(Number.isFinite)) throw new Error(`Malformed data row ${i + 1}: expected ${per} numbers.`);
+  // Rows are read as a flat number stream, so a 2-port row may wrap over several lines.
+  const data: SweepPoint[] = [];
+  let i = 0;
+  for (; i + per <= nums.length; i += per) {
+    const r = nums.slice(i, i + per);
     const f = r[0] * unit;
+    if (data.length && f <= data[data.length - 1].f) break; // Touchstone 1.x: a non-increasing frequency starts the noise block
     const s11 = toC(r[1], r[2]);
     const s21 = ports === 2 ? toC(r[3], r[4]) : ([0, 0] as Complex);
     // Renormalise to 50 Ω if the file uses another reference impedance (an exact open stays Γ = 1).
     const s11n = z0 === Z0 ? s11 : (() => { const z = impedance(s11, "s11", z0); return isFinite(z[0]) ? C.div(C.sub(z, [Z0, 0]), C.add(z, [Z0, 0])) : ([1, 0] as Complex); })();
-    return { f, s11: s11n, s21 };
-  });
+    data.push({ f, s11: s11n, s21 });
+  }
+  const noise = data.length > 0 && i < nums.length && nums[i] * unit <= data[data.length - 1].f;
+  if (i < nums.length && !noise) throw new Error(`Truncated data: ${nums.length - i} trailing number(s) don't fill a ${per}-number row.`);
   if (!data.length) throw new Error("No data points found in the Touchstone file.");
   return { ports, z0, data, comments };
 }

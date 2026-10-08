@@ -34,8 +34,8 @@ export function StimulusPanel() {
     <div>
       <Section title="Frequency">
         <div className="grid2">
-          <Field label="Start"><FreqInput value={s.start} onChange={(v) => setRange(v, s.stop)} ariaLabel="Start frequency" /></Field>
-          <Field label="Stop"><FreqInput value={s.stop} onChange={(v) => setRange(s.start, v)} ariaLabel="Stop frequency" /></Field>
+          <Field label="Start"><FreqInput value={s.start} onChange={(v) => setRange(v, Math.max(v, s.stop))} ariaLabel="Start frequency" /></Field>
+          <Field label="Stop"><FreqInput value={s.stop} onChange={(v) => setRange(Math.min(v, s.start), v)} ariaLabel="Stop frequency" /></Field>
           <Field label="Center"><FreqInput value={center} onChange={(v) => setRange(v - span / 2, v + span / 2)} ariaLabel="Center frequency" /></Field>
           <Field label="Span"><FreqInput value={span} onChange={(v) => setRange(center - v / 2, center + v / 2)} ariaLabel="Span" /></Field>
         </div>

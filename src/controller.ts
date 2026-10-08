@@ -8,7 +8,7 @@ import { applyCalibration, computeErrorTerms, parseCal, serializeCal, type CalDa
 import { FORMAT_BY_ID, traceValues } from "./lib/formats";
 import { nearestIndex, search } from "./lib/analysis";
 import { parseTouchstone, writeCsv, writeTouchstone } from "./lib/touchstone";
-import { get, log, set, TRACE_COLORS, type MemorySlot } from "./store";
+import { ACTIVE_CAL_KEY, get, log, set, TRACE_COLORS, type MemorySlot } from "./store";
 import { tr } from "./i18n";
 
 let vna: LiteVNA | null = null;
@@ -330,17 +330,16 @@ export function finishCalibration(name = `Cal ${new Date().toLocaleString()}`) {
   log(tr("Calibration applied: {0}{1}.", Object.keys(m).map((k) => tr(k.toUpperCase())).join(", "), cal.enhancedResponse ? ` + ${tr("enhanced response")}` : ""));
 }
 
-const ACTIVE_CAL = "webvna.activecal";
 export function setCalibration(cal: CalData | null) {
   set({ cal, terms: cal ? computeErrorTerms(cal) : null, calEnabled: true });
-  try { if (cal) localStorage.setItem(ACTIVE_CAL, serializeCal(cal)); else localStorage.removeItem(ACTIVE_CAL); } catch { /* storage full or unavailable */ }
+  try { if (cal) localStorage.setItem(ACTIVE_CAL_KEY, serializeCal(cal)); else localStorage.removeItem(ACTIVE_CAL_KEY); } catch { /* storage full or unavailable */ }
   recompute();
 }
 
 /** Restore the calibration that was active when the page was last closed. */
 export function restoreActiveCal() {
   try {
-    const t = localStorage.getItem(ACTIVE_CAL);
+    const t = localStorage.getItem(ACTIVE_CAL_KEY);
     if (!t) return;
     const cal = parseCal(t);
     set({ cal, terms: computeErrorTerms(cal) });

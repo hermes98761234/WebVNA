@@ -106,7 +106,7 @@ export function formatValue(fmt: FormatId, s: Complex, f: number, ch: Channel): 
     case "imag": return s[1];
   }
   const z = impedance(s, ch);
-  const y: Complex = isFinite(z[0]) ? C.inv(z) : [0, 0]; // Y of an open is 0
+  const y = C.inv(z); // Y of an open (Z = ∞) is 0
   switch (fmt) {
     case "r": return z[0];
     case "x": return z[1];

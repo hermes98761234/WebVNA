@@ -8,7 +8,7 @@ export function FreqInput({ value, onChange, min, max, ariaLabel }: { value: num
   const t = useT();
   const [text, setText] = useState(fmtHz(value));
   const [bad, setBad] = useState(false);
-  const dirty = useRef(false); // true while the user has typed something not yet committed
+  const dirty = useRef(false); // true while the user is editing; cleared on blur so a rejected entry doesn't block outside updates
   useEffect(() => { if (dirty.current) return; setText(fmtHz(value)); setBad(false); }, [value]);
   const commit = () => {
     if (!dirty.current) return;
@@ -20,7 +20,7 @@ export function FreqInput({ value, onChange, min, max, ariaLabel }: { value: num
   };
   return (
     <input type="text" aria-label={ariaLabel && t(ariaLabel)} className={bad ? "bad" : ""} value={text}
-      onChange={(e) => { dirty.current = true; setText(e.target.value); }} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
+      onChange={(e) => { dirty.current = true; setText(e.target.value); }} onBlur={() => { commit(); dirty.current = false; }} onKeyDown={(e) => e.key === "Enter" && commit()} />
   );
 }
 
@@ -43,7 +43,7 @@ export function SIInput({ value, onChange, unit = "", ariaLabel, digits = 4 }: {
   };
   return (
     <input type="text" aria-label={ariaLabel && t(ariaLabel)} className={bad ? "bad" : ""} value={text}
-      onChange={(e) => { dirty.current = true; setText(e.target.value); }} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
+      onChange={(e) => { dirty.current = true; setText(e.target.value); }} onBlur={() => { commit(); dirty.current = false; }} onKeyDown={(e) => e.key === "Enter" && commit()} />
   );
 }
 

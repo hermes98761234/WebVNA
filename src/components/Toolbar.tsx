@@ -32,8 +32,9 @@ export function Toolbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: bo
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return; // Ctrl/Cmd+R = reload, not run
-      if ((e.target as HTMLElement)?.closest("input, select, textarea, button, a, [contenteditable]")) return;
-      if (e.key === " " && connected) { e.preventDefault(); void sweepOnce(); }
+      const el = e.target as HTMLElement | null;
+      if (el?.closest("input, select, textarea, [contenteditable]")) return;
+      if (e.key === " " && connected && !el?.closest("button, a")) { e.preventDefault(); void sweepOnce(); } // Space on a focused button activates it
       if ((e.key === "r" || e.key === "R") && connected) { if (continuous) stop(); else void startContinuous(); }
     };
     window.addEventListener("keydown", onKey);
