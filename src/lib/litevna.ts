@@ -5,7 +5,8 @@ import type { LinkBase } from "./links";
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-export interface SweepPoint { f: number; s11: Complex; s21: Complex }
+/** s12/s22 are present only for full 2-port data (flip-DUT measurement or an imported .s2p). */
+export interface SweepPoint { f: number; s11: Complex; s21: Complex; s12?: Complex; s22?: Complex }
 export type Progress = (fraction: number) => void;
 
 export interface SweepOptions {

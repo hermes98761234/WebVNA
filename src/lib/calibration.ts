@@ -184,6 +184,13 @@ function interp(freqs: number[], arr: Complex[], f: number, hint: { i: number })
   return C.lerp(arr[i], arr[i + 1], t);
 }
 
+/** Error terms resampled onto another frequency grid (linear, clamped at the ends). */
+export function interpTerms(terms: ErrorTerms, freqs: number[]): ErrorTerms {
+  const h = { i: 0 };
+  const g = (a: Complex[] | null) => (a ? freqs.map((f) => interp(terms.freqs, a, f, h)) : null);
+  return { freqs: freqs.slice(), e00: g(terms.e00), e11: g(terms.e11), T: g(terms.T), iso: g(terms.iso), tr: g(terms.tr), e22: g(terms.e22), thruTrue: g(terms.thruTrue) };
+}
+
 export interface Correction {
   s11Delay: number; // seconds (electrical delay / port extension, applied as e^{+jωτ})
   s21Delay: number;
@@ -214,7 +221,7 @@ export function applyCalibration(raw: SweepPoint[], terms: ErrorTerms | null, co
     if (corr.s11Delay) s11 = C.mul(s11, C.expj(w * corr.s11Delay));
     if (corr.s21Delay) s21 = C.mul(s21, C.expj(w * corr.s21Delay));
     if (off !== 1) s21 = C.scale(s21, off);
-    return { f: p.f, s11, s21 };
+    return { ...p, s11, s21 }; // s12/s22 (if any) pass through untouched
   });
 }
 
