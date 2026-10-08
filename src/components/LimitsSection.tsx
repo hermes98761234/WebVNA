@@ -46,7 +46,7 @@ export function LimitsSection() {
             <span style={{ flex: 1 }} />
             <button className="small danger" onClick={() => setSegs(segs.filter((_, k) => k !== i))} aria-label={t("Delete segment {0}", i + 1)}>✕</button>
           </div>
-          <div className="grid4">
+          <div className="grid2">
             <Field label="From"><FreqInput value={l.f1} onChange={(v) => patch(i, { f1: v })} ariaLabel="Limit start frequency" /></Field>
             <Field label="To"><FreqInput value={l.f2} onChange={(v) => patch(i, { f2: v })} ariaLabel="Limit stop frequency" /></Field>
             <Field label={t("Value 1 {0}", unit)}><Num value={l.v1} step={0.1} onChange={(v) => patch(i, { v1: v })} ariaLabel="Limit value at start" /></Field>

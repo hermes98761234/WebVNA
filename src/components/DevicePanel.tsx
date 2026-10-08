@@ -31,7 +31,7 @@ export function DevicePanel() {
             <span>{t("Max points")}</span><span>{s.info.maxPoints}</span>
             {has("serial") && <><span>{t("Serial")}</span><span style={{ fontFamily: "monospace", fontSize: 11 }}>{s.serial || "—"}</span></>}
             {has("battery") && <><span>{t("Battery")}</span><span>{s.vbat != null ? `${s.vbat.toFixed(3)} V` : "—"}</span></>}
-            <span>{t("Link")}</span><span>{s.linkKind}</span>
+            <span>{t("Link")}</span><span>{t(s.linkKind)}</span>
             {stats && <><span>{t("Records")}</span><span>{t("{0} ({1} bad checksum)", stats.records, stats.badChecksum)}</span></>}
             {stats && stats.lastSweepMs > 0 && <><span>{t("Last sweep")}</span><span>{(stats.lastSweepMs / 1000).toFixed(2)} s</span></>}
           </div>

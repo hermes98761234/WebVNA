@@ -11,6 +11,6 @@ export default defineConfig({
     // Hardware tests talk to a real device; give them room.
     testTimeout: 30000,
     // Agent/git worktrees live under .claude/; never collect their copies of the tests.
-    exclude: [...configDefaults.exclude, '.claude/**'],
+    exclude: [...configDefaults.exclude, '.claude/**', 'e2e/**'],
   },
 })

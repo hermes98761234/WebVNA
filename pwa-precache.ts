@@ -40,6 +40,7 @@ const CACHE = PREFIX + VERSION;
 const PRECACHE = ${JSON.stringify(urls, null, 2)};
 const scope = self.registration.scope;
 const abs = (u) => new URL(u, scope).href;
+// ignoreVary: servers that send "Vary: Origin" (vite preview, some CDNs) would otherwise miss the cache for module scripts (CORS mode) while offline.
 
 self.addEventListener('install', (event) => {
   // No skipWaiting here: the page asks for it (SKIP_WAITING) once the user agrees to reload.
@@ -65,10 +66,10 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin || !req.url.startsWith(scope)) return;
   if (req.mode === 'navigate') {
     // Network first so a deploy shows up at once; the cached shell keeps the app working offline.
-    event.respondWith(fetch(req).catch(() => caches.match(abs('index.html'), { cacheName: CACHE }).then((r) => r || caches.match(abs('./'), { cacheName: CACHE }))));
+    event.respondWith(fetch(req).catch(() => caches.match(abs('index.html'), { cacheName: CACHE, ignoreVary: true }).then((r) => r || caches.match(abs('./'), { cacheName: CACHE, ignoreVary: true }))));
     return;
   }
-  event.respondWith(caches.match(req, { cacheName: CACHE }).then((hit) => hit || fetch(req)));
+  event.respondWith(caches.match(req, { cacheName: CACHE, ignoreVary: true }).then((hit) => hit || fetch(req)));
 });
 `
 }

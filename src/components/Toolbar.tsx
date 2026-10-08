@@ -61,7 +61,7 @@ export function Toolbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: bo
       ) : (
         <button onClick={() => disconnect()}>{t("Disconnect")}</button>
       )}
-      {connected && info && <span className="hint device-info">{info.model} · {caps?.protocol === "v1-shell" ? `${t("fw {0}", info.firmware ?? "?")} · ${t("experimental")}` : t("fw {0}.{1}", info.fwMajor, info.fwMinor)} · {linkKind}{vbat != null ? ` · ${vbat.toFixed(2)} V` : ""}</span>}
+      {connected && info && <span className="hint device-info">{info.model} · {caps?.protocol === "v1-shell" ? `${t("fw {0}", info.firmware ?? "?")} · ${t("experimental")}` : t("fw {0}.{1}", info.fwMajor, info.fwMinor)} · {t(linkKind)}{vbat != null ? ` · ${vbat.toFixed(2)} V` : ""}</span>}
       {status === "connecting" && <span className="hint">{t("Connecting…")}</span>}
       <span className="spacer" />
       {calBadge}
