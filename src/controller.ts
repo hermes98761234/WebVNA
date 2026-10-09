@@ -21,7 +21,8 @@ import { FORMAT_BY_ID, traceValues } from "./lib/formats";
 import { nearestIndex, search } from "./lib/analysis";
 import { combineFlip, fakeFlip } from "./lib/twoport";
 import { parseTouchstone, writeCsv, writeTouchstone } from "./lib/touchstone";
-import { get, log, set, updateTrace, TRACE_COLORS, type MemorySlot, type State } from "./store";
+import { get, log, set, updateTrace, useStore, TRACE_COLORS, type MemorySlot, type State } from "./store";
+import { capturePoint, normDeg, patternCsv } from "./lib/pattern";
 import { tr } from "./i18n";
 
 let vna: VnaDriver | null = null;
@@ -640,4 +641,38 @@ async function autoSaveSweep() {
       await w.close();
     } else download(name, text);
   } catch (e) { log(tr("Auto-save: {0}", errMsg(e)), "error"); }
+}
+
+/** Wait until `n` more sweeps have completed (continuous mode), so the data was measured after the rotation. */
+function nextSweeps(n: number, timeoutMs = 30000): Promise<void> {
+  const target = get().sweepCount + n;
+  return new Promise((resolve) => {
+    const done = () => { clearTimeout(timer); unsub(); resolve(); };
+    const timer = setTimeout(done, timeoutMs);
+    const unsub = useStore.subscribe((s) => { if (s.sweepCount >= target || !s.continuous) done(); });
+  });
+}
+
+/** Capture |S21| at the pattern frequency for the current angle, from a sweep taken after the button press. */
+export async function capturePattern() {
+  const s = get();
+  if (s.status === "connected") {
+    if (s.continuous) await nextSweeps(2);
+    else if (!s.running) await sweepOnce();
+  }
+  const st = get();
+  const next = capturePoint(st.pattern, st.data, st.markers[st.activeMarker]?.f ?? 0);
+  if (!next) { log(tr("Pattern: no S21 data at the capture frequency."), "error"); return; }
+  set({ pattern: next });
+}
+export function undoPattern() {
+  const p = get().pattern;
+  if (!p.points.length) return;
+  const prev = normDeg(p.angle - p.step);
+  set({ pattern: { ...p, angle: prev, points: p.points.filter((q) => Math.abs(q.deg - prev) > 0.01) } });
+}
+export const clearPattern = () => set((s) => ({ pattern: { ...s.pattern, angle: 0, points: [] } }));
+export function exportPatternCsv() {
+  const s = get();
+  download(`webvna-pattern-${stamp()}.csv`, patternCsv(s.pattern.points, s.pattern.freq ?? s.markers[s.activeMarker]?.f ?? 0), "text/csv");
 }

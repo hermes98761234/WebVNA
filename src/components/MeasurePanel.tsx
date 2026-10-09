@@ -10,6 +10,7 @@ import { FORMAT_BY_ID, impedance, swr, traceValues } from "../lib/formats";
 import { C } from "../lib/complex";
 import { fmtHz, si } from "../lib/units";
 import { useT, translate, type Lang } from "../i18n";
+import { PatternSection } from "./PatternSection";
 
 const MODES: [MeasureMode, string, string][] = [
   ["off", "Off", ""],
@@ -49,6 +50,7 @@ export function MeasurePanel() {
         </>}
         <p className="hint">{t("Results are shown under the charts and update with every sweep.")}</p>
       </Section>
+      <PatternSection />
     </div>
   );
 }
