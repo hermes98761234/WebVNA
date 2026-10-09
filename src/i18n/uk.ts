@@ -696,4 +696,10 @@ export const UK: Record<string, string> = {
   "Passband ripple {0} dB (max {1}): {2}": "Нерівномірність у смузі {0} дБ (макс. {1}): {2}",
   "Apply mask (replaces limits)": "Застосувати маску (замінює ліміти)",
   "Close": "Закрити",
+  "Min K (Rollett)": "Мін. K (Роллетт)",
+  "Min μ": "Мін. μ",
+  "Max |Δ|": "Макс. |Δ|",
+  "Unconditionally stable over the sweep (μ > 1).": "Безумовно стійкий на всьому свіпі (μ > 1).",
+  "Potentially unstable (μ ≤ 1 somewhere in the sweep).": "Потенційно нестійкий (μ ≤ 1 десь у свіпі).",
+  "From the flip method: less accurate than a true 2-port VNA, especially near μ = 1.": "Методом перевертання: менш точно, ніж справжній 2-портовий VNA, особливо поблизу μ = 1.",
 };

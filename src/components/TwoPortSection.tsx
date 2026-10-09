@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { stabilitySummary } from "../lib/rftests";
 import { useStore } from "../store";
 import { buildFlip, clearTwoPort, exportFull2Port, fakeFlipCurrent, flipAsOverlay, isSimulator, measureFlip } from "../controller";
 import { fmtHz } from "../lib/units";
@@ -12,6 +13,7 @@ export function TwoPortSection() {
   const { fwd, rev, result } = s.twoPort;
   const connected = s.status === "connected";
   const grid = (d: typeof fwd) => (d && d.length ? `${fmtHz(d[0].f)}–${fmtHz(d[d.length - 1].f)}, ${d.length} ${t("pts")}` : t("not measured"));
+  const st = useMemo(() => (result ? stabilitySummary(result) : null), [result]);
   const sameGrid = !fwd || !rev || (fwd.length === rev.length && Math.abs(fwd[0].f - rev[0].f) < 1);
 
   return (
@@ -33,6 +35,15 @@ export function TwoPortSection() {
         <button className="danger" disabled={!fwd && !rev && !result} onClick={() => clearTwoPort()}>{t("Clear")}</button>
       </div>
       <p className="hint">{result ? t("Result ready: {0}", grid(result)) : t("No result yet.")}</p>
+      {st && (
+        <div className="kv">
+          <span>{t("Min K (Rollett)")}</span><span>{Number.isFinite(st.kMin) ? st.kMin.toFixed(3) : "∞"} @ {fmtHz(st.kMinF)}</span>
+          <span>{t("Min μ")}</span><span>{st.muMin.toFixed(3)} @ {fmtHz(st.muMinF)}</span>
+          <span>{t("Max |Δ|")}</span><span>{st.deltaMax.toFixed(3)}</span>
+          <span style={{ gridColumn: "1 / -1", fontWeight: 600, color: st.unconditional ? "var(--ok)" : "var(--warn)" }}>{st.unconditional ? t("Unconditionally stable over the sweep (μ > 1).") : t("Potentially unstable (μ ≤ 1 somewhere in the sweep).")}</span>
+          <span style={{ gridColumn: "1 / -1" }} className="hint">{t("From the flip method: less accurate than a true 2-port VNA, especially near μ = 1.")}</span>
+        </div>
+      )}
       <div className="row">
         <Select value={fmt} ariaLabel="Touchstone format" options={[["RI", "Real/Imag"], ["MA", "Mag/Angle"], ["DB", "dB/Angle"]] as ["RI" | "MA" | "DB", string][]} onChange={(v) => setFmt(v)} />
         <button disabled={!result} onClick={() => exportFull2Port(fmt)}>{t("Export .s2p")}</button>

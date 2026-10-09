@@ -696,4 +696,10 @@ export const PL: Record<string, string> = {
   "Passband ripple {0} dB (max {1}): {2}": "Zafalowania w paśmie {0} dB (maks. {1}): {2}",
   "Apply mask (replaces limits)": "Zastosuj maskę (zastępuje limity)",
   "Close": "Zamknij",
+  "Min K (Rollett)": "Min. K (Rollett)",
+  "Min μ": "Min. μ",
+  "Max |Δ|": "Maks. |Δ|",
+  "Unconditionally stable over the sweep (μ > 1).": "Bezwarunkowo stabilny w całym przemiataniu (μ > 1).",
+  "Potentially unstable (μ ≤ 1 somewhere in the sweep).": "Potencjalnie niestabilny (μ ≤ 1 gdzieś w przemiataniu).",
+  "From the flip method: less accurate than a true 2-port VNA, especially near μ = 1.": "Metodą odwracania: mniej dokładne niż prawdziwy 2-portowy VNA, zwłaszcza w pobliżu μ = 1.",
 };
