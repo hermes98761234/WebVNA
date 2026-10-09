@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { C } from "./complex";
 import type { SweepPoint } from "./litevna";
-import { DEFAULT_PATTERN, addPatternPoint, capturePoint, patternCsv, patternMetrics, patternValueAt, s21DbAt, type PatternPoint } from "./pattern";
+import { DEFAULT_PATTERN, addPatternPoint, capturePoint, undoCapture, patternCsv, patternMetrics, patternValueAt, s21DbAt, type PatternPoint } from "./pattern";
 
 const cardioid = (step: number, from = 0, to = 360): PatternPoint[] => {
   const out: PatternPoint[] = [];
@@ -55,5 +55,29 @@ describe("capture", () => {
   });
   it("CSV", () => {
     expect(patternCsv([{ deg: 0, db: -1.234 }], 2.4e9)).toBe("# frequency_hz,2400000000\nangle_deg,s21_db\n0,-1.234\n");
+  });
+});
+
+describe("capture freq lock and undo", () => {
+  const data: SweepPoint[] = [1e9, 2e9, 3e9].map((f, i) => ({ f, s11: [0, 0], s21: C.polar(10 ** ((-20 - 10 * i) / 20), 0) }));
+  it("locks the marker frequency on the first capture", () => {
+    const st = capturePoint(DEFAULT_PATTERN, data, 2e9)!;
+    expect(st.freq).toBe(2e9);
+    expect(capturePoint(st, data, 3e9)!.points[1].db).toBeCloseTo(-30, 9); // marker moved; still 2 GHz
+  });
+  it("undo restores the point, angle and frequency even after the step changed", () => {
+    let st = capturePoint({ ...DEFAULT_PATTERN, freq: 1e9 }, data, 0)!; // 0° → −20
+    st = capturePoint(st, data, 0)!; // 10°
+    st = capturePoint({ ...st, angle: 0, freq: 3e9 }, data, 0)!; // re-capture 0° at −40 (replaces)
+    st = { ...st, step: 5 };
+    st = undoCapture(st);
+    expect(st.points).toEqual([{ deg: 0, db: -20 }, { deg: 10, db: -20 }]);
+    expect(st.angle).toBe(0);
+    expect(st.freq).toBe(3e9); // the frequency in effect before that capture
+    st = undoCapture(undoCapture(st));
+    expect(st.points).toEqual([]);
+    expect(st.angle).toBe(0);
+    expect(st.freq).toBe(1e9);
+    expect(undoCapture(st)).toBe(st);
   });
 });

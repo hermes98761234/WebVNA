@@ -59,7 +59,8 @@ function PatternChart() {
 export function PatternSection() {
   const t = useT();
   const p = useStore((s) => s.pattern);
-  const busy = useStore((s) => s.running && !s.continuous);
+  const busy = useStore((s) => s.patternBusy || (s.running && !s.continuous));
+  const connected = useStore((s) => s.status === "connected");
   const markerF = useStore((s) => s.markers[s.activeMarker]?.f ?? 0);
   const m = useMemo(() => patternMetrics(p.points), [p.points]);
   const patch = (q: Partial<typeof p>) => set((s) => ({ pattern: { ...s.pattern, ...q } }));
@@ -77,8 +78,8 @@ export function PatternSection() {
         <label>{t("Next angle (°)")}</label><Num value={p.angle} min={0} max={359} step={1} onChange={(v) => patch({ angle: ((v % 360) + 360) % 360 })} ariaLabel="Next angle" />
       </div>
       <div className="row">
-        <button className="primary" disabled={busy} onClick={() => void capturePattern()}>{t("Capture {0}°", p.angle)}</button>
-        <button disabled={!p.points.length} onClick={() => undoPattern()}>{t("Undo")}</button>
+        <button className="primary" disabled={busy || !connected} onClick={() => void capturePattern()}>{t("Capture {0}°", p.angle)}</button>
+        <button disabled={!p.history.length} onClick={() => undoPattern()}>{t("Undo")}</button>
         <button disabled={!p.points.length} onClick={() => exportPatternCsv()}>{t("Export CSV")}</button>
         <button className="danger" disabled={!p.points.length} onClick={() => clearPattern()}>{t("Clear")}</button>
       </div>

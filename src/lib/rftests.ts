@@ -4,6 +4,7 @@ import { C, type Complex } from "./complex";
 import type { SweepPoint } from "./litevna";
 import type { LimitSegment } from "./limits";
 import { SPEED_OF_LIGHT } from "./units";
+import type { SwrBand } from "./analysis";
 
 /** |z| in dB; -Infinity for 0. */
 export const s21Db = (z: Complex) => 20 * Math.log10(C.abs(z));
@@ -146,4 +147,22 @@ export function filterMask(m: FilterMaskSpec): LimitSegment[] {
   if (m.stopLo != null && m.stopLo > m.fMin) out.push(seg("upper", m.fMin, m.stopLo, -m.minRej));
   if (m.stopHi != null && m.stopHi < m.fMax) out.push(seg("upper", m.stopHi, m.fMax, -m.minRej));
   return out;
+}
+
+/** Antenna Q from a VSWR < 2 band (`swrBandwidth`); null when the band is missing or clipped by the sweep edges. */
+export function bandQ(band: SwrBand, data: SweepPoint[]): number | null {
+  if (band.low == null || band.high == null || !data.length) return null;
+  if (band.low <= data[0].f || band.high >= data[data.length - 1].f) return null;
+  return antennaQ((band.high - band.low) / data[band.best].f);
+}
+
+/** Passband ripple without the roll-off: peak-to-peak between the first and last local maximum in [i0, i1]. 0 for one hump. */
+export function interiorRipple(values: ArrayLike<number>, i0: number, i1: number): number {
+  const lo = Math.max(1, Math.min(i0, i1) + 1), hi = Math.min(values.length - 2, Math.max(i0, i1) - 1);
+  let first = -1, last = -1;
+  for (let i = lo; i <= hi; i++) if (values[i] >= values[i - 1] && values[i] > values[i + 1]) { if (first < 0) first = i; last = i; }
+  if (first < 0) return 0;
+  let min = Infinity, max = -Infinity;
+  for (let i = first; i <= last; i++) if (Number.isFinite(values[i])) { min = Math.min(min, values[i]); max = Math.max(max, values[i]); }
+  return max - min;
 }

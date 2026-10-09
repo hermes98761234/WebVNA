@@ -715,4 +715,6 @@ export const PL: Record<string, string> = {
   "Beamwidth −3 dB": "Szerokość wiązki −3 dB",
   "Front-to-back": "Stosunek przód/tył",
   "Pattern: no S21 data at the capture frequency.": "Charakterystyka: brak danych S21 na częstotliwości zapisu.",
+  "Pattern: connect the instrument first.": "Charakterystyka: najpierw podłącz przyrząd.",
+  "Pattern: no fresh sweep; point not captured.": "Charakterystyka: brak nowego przemiatania; punkt nie został zapisany.",
 };

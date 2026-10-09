@@ -137,6 +137,8 @@ export interface State {
   rfTest: RfTestSettings;
   /** Radiation pattern capture (session only, not persisted). */
   pattern: PatternState;
+  /** A pattern capture is waiting for its sweep. */
+  patternBusy: boolean;
   // misc
   log: LogEntry[];
   commsMonitor: boolean;
@@ -162,7 +164,7 @@ export const initialState: State = {
   running: false, continuous: false, progress: 0, sweepCount: 0, lastSweepMs: 0, raw: [], data: [], frozen: false,
   calWork: { freqs: null, meas: {}, thru11: null }, cal: null, terms: null, calEnabled: true, kit: IDEAL_KIT, enhancedResponse: false, correction: NO_CORRECTION, fixture: NO_FIXTURE, twoPort: { fwd: null, rev: null, result: null },
   traces: defaultTraces(), activeTrace: 0, memories: {}, refs: [], markers: defaultMarkers(), activeMarker: 0, deltaRef: null,
-  tdr: DEFAULT_TDR, gate: DEFAULT_GATE, core: DEFAULT_CORE, smithAdmittance: false, smithReadout: "rlc", showSmith: true, showRect: true, measure: "off", measureVf: 0.66, rfTest: DEFAULT_RF_TEST, pattern: DEFAULT_PATTERN,
+  tdr: DEFAULT_TDR, gate: DEFAULT_GATE, core: DEFAULT_CORE, smithAdmittance: false, smithReadout: "rlc", showSmith: true, showRect: true, measure: "off", measureVf: 0.66, rfTest: DEFAULT_RF_TEST, pattern: DEFAULT_PATTERN, patternBusy: false,
   log: [], commsMonitor: false, autoSave: false, autoSaveName: "sweep", screenshot: null,
 };
 

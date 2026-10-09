@@ -105,7 +105,7 @@ Enter the largest antenna dimension D. The result warns when the distance is clo
 - the lower and upper stopband edges (minimum rejection)
 - the passband ripple, which is checked live
 
-*Filter* mode also reports the passband ripple between the −3 dB points.
+*Filter* mode also reports the passband ripple: the peak-to-peak between the first and last ripple peak inside the −3 dB band, so the roll-off edges are left out.
 
 **Stability (K, μ).** After *Build S-parameters* in the 2-port section, it shows the minimum Rollett K, the minimum μ, the maximum |Δ|, and whether the device is unconditionally stable (μ > 1 everywhere). The flip method is less accurate than a true 2-port VNA, so treat values near μ = 1 with care.
 
@@ -115,7 +115,7 @@ Measure → *Radiation pattern*: put the antenna under test on port 2 (on a turn
 1. Choose the frequency (the active marker by default) and the angle step.
 2. Rotate to the angle shown on **Capture**, and press it.
 
-Each capture takes a fresh sweep, stores |S21| at that angle and advances by the step. The polar plot is normalised to the peak (30 dB range). Below it are the peak direction, the −3 dB beamwidth and the front-to-back ratio. **Undo** removes the last point, and **Export CSV** saves angle and dB. The pattern is included in session files.
+Each capture waits for a sweep that finishes after the button press, so the reading is from after the rotation. It stores |S21| at that angle and advances by the step; the first capture locks the frequency. If no fresh sweep arrives (stopped, frozen, error), nothing is recorded. The polar plot is normalised to the peak (30 dB range). Below it are the peak direction, the −3 dB beamwidth and the front-to-back ratio. **Undo** reverts the last capture (including a replaced point), and **Export CSV** saves angle and dB. The pattern is included in session files.
 
 ## Statistics
 

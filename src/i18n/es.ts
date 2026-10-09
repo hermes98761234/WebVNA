@@ -711,4 +711,6 @@ export const ES: Record<string, string> = {
   "Beamwidth −3 dB": "Ancho de haz −3 dB",
   "Front-to-back": "Relación delante/detrás",
   "Pattern: no S21 data at the capture frequency.": "Diagrama: no hay datos S21 en la frecuencia de captura.",
+  "Pattern: connect the instrument first.": "Diagrama: conecte primero el instrumento.",
+  "Pattern: no fresh sweep; point not captured.": "Diagrama: no hay barrido nuevo; punto no capturado.",
 };

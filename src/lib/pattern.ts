@@ -3,9 +3,12 @@ import type { SweepPoint } from "./litevna";
 import { s21Db } from "./rftests";
 
 export interface PatternPoint { deg: number; db: number }
-/** freq null = the active marker's frequency. `angle` is the next angle to capture. */
-export interface PatternState { freq: number | null; step: number; angle: number; points: PatternPoint[] }
-export const DEFAULT_PATTERN: PatternState = { freq: null, step: 10, angle: 0, points: [] };
+/** One capture, for undo: the angle and frequency before it, and the point it replaced. */
+export interface PatternUndo { angle: number; freq: number | null; deg: number; replaced: PatternPoint | null }
+/** freq null = the active marker's frequency (locked on the first capture). `angle` is the next angle to capture. */
+export interface PatternState { freq: number | null; step: number; angle: number; points: PatternPoint[]; history: PatternUndo[] }
+export const DEFAULT_PATTERN: PatternState = { freq: null, step: 10, angle: 0, points: [], history: [] };
+const MAX_HISTORY = 720;
 
 /** Gaps wider than this are not interpolated (partial arcs). */
 const MAX_GAP = 90;
@@ -30,11 +33,27 @@ export function s21DbAt(data: SweepPoint[], f: number): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
-/** Add a point at the current angle from the sweep and advance by `step`. Null if nothing can be read at the frequency. */
+const sameAngle = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b)) < 0.01;
+
+/**
+ * Add a point at the current angle from the sweep and advance by `step`. Null if nothing can be read at the frequency.
+ * The first capture locks the marker frequency, so a tracking or dragged marker can't mix frequencies into the pattern.
+ */
 export function capturePoint(st: PatternState, data: SweepPoint[], markerF: number): PatternState | null {
-  const db = s21DbAt(data, st.freq ?? markerF);
+  const f = st.freq ?? markerF;
+  const db = s21DbAt(data, f);
   if (db == null) return null;
-  return { ...st, points: addPatternPoint(st.points, { deg: st.angle, db }), angle: normDeg(st.angle + st.step) };
+  const deg = normDeg(st.angle);
+  const undo: PatternUndo = { angle: st.angle, freq: st.freq, deg, replaced: st.points.find((p) => sameAngle(p.deg, deg)) ?? null };
+  return { ...st, freq: f, points: addPatternPoint(st.points, { deg, db }), angle: normDeg(st.angle + st.step), history: [...st.history, undo].slice(-MAX_HISTORY) };
+}
+
+/** Revert the last capture (point, angle and frequency). Returns `st` unchanged when there is nothing to undo. */
+export function undoCapture(st: PatternState): PatternState {
+  const h = st.history[st.history.length - 1];
+  if (!h) return st;
+  const rest = st.points.filter((p) => !sameAngle(p.deg, h.deg));
+  return { ...st, angle: h.angle, freq: h.freq, points: h.replaced ? addPatternPoint(rest, h.replaced) : rest, history: st.history.slice(0, -1) };
 }
 
 /** Neighbours of `deg` on the circle: [before, after, gap from before to after]. Points must be sorted. */

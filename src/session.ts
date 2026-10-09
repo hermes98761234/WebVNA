@@ -73,7 +73,7 @@ export function exportSession(includeData = true): SessionFile {
   };
   if (includeData && s.raw.length) out.data = { raw: s.raw, data: s.data };
   if (s.twoPort.result) out.twoPort = { result: s.twoPort.result };
-  if (s.pattern.points.length) out.pattern = s.pattern;
+  if (s.pattern.points.length) out.pattern = { ...s.pattern, history: [] };
   return out;
 }
 
@@ -121,6 +121,7 @@ export function importSession(input: unknown): void {
       step: isNum(p.step) && p.step > 0 && p.step <= 180 ? p.step : DEFAULT_PATTERN.step,
       angle: isNum(p.angle) ? normDeg(p.angle) : 0,
       points: (p.points as PatternPoint[]).reduce((acc, q) => addPatternPoint(acc, { deg: q.deg, db: q.db }), [] as PatternPoint[]),
+      history: [],
     };
   }
 

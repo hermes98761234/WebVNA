@@ -22,7 +22,7 @@ import { nearestIndex, search } from "./lib/analysis";
 import { combineFlip, fakeFlip } from "./lib/twoport";
 import { parseTouchstone, writeCsv, writeTouchstone } from "./lib/touchstone";
 import { get, log, set, updateTrace, useStore, TRACE_COLORS, type MemorySlot, type State } from "./store";
-import { capturePoint, normDeg, patternCsv } from "./lib/pattern";
+import { capturePoint, patternCsv, undoCapture } from "./lib/pattern";
 import { tr } from "./i18n";
 
 let vna: VnaDriver | null = null;
@@ -643,35 +643,49 @@ async function autoSaveSweep() {
   } catch (e) { log(tr("Auto-save: {0}", errMsg(e)), "error"); }
 }
 
-/** Wait until `n` more sweeps have completed (continuous mode), so the data was measured after the rotation. */
-function nextSweeps(n: number, timeoutMs = 30000): Promise<void> {
-  const target = get().sweepCount + n;
+/** Resolves true once `n` more sweeps have completed, false if sweeping stops or the timeout passes first. */
+function waitSweeps(n: number, timeoutMs: number): Promise<boolean> {
   return new Promise((resolve) => {
-    const done = () => { clearTimeout(timer); unsub(); resolve(); };
-    const timer = setTimeout(done, timeoutMs);
-    const unsub = useStore.subscribe((s) => { if (s.sweepCount >= target || !s.continuous) done(); });
+    let left = n;
+    const done = (ok: boolean) => { clearTimeout(timer); offSweep(); offStore(); resolve(ok); };
+    const timer = setTimeout(() => done(false), timeoutMs);
+    const offSweep = onSweepComplete(() => { if (--left <= 0) done(true); });
+    const offStore = useStore.subscribe((s) => { if (!s.running) done(false); });
   });
 }
 
-/** Capture |S21| at the pattern frequency for the current angle, from a sweep taken after the button press. */
+let capturing = false;
+
+/**
+ * Capture |S21| at the pattern frequency for the current angle. The point must come from a sweep that finished after
+ * the button press (the antenna was just rotated); otherwise nothing is recorded. Repeated presses are ignored meanwhile.
+ */
 export async function capturePattern() {
-  const s = get();
-  if (s.status === "connected") {
-    if (s.continuous) await nextSweeps(2);
-    else if (!s.running) await sweepOnce();
+  if (capturing) return;
+  capturing = true;
+  set({ patternBusy: true });
+  try {
+    const s = get();
+    const n0 = s.sweepCount;
+    if (s.status !== "connected") { log(tr("Pattern: connect the instrument first."), "error"); return; }
+    if (s.continuous) {
+      // the sweep in progress may have started before the rotation: wait for the one after it
+      if (!(await waitSweeps(2, Math.max(30000, 3 * s.lastSweepMs)))) { log(tr("Pattern: no fresh sweep; point not captured."), "error"); return; }
+    } else {
+      await sweepOnce();
+      if (get().sweepCount <= n0) { log(tr("Pattern: no fresh sweep; point not captured."), "error"); return; }
+    }
+    const st = get();
+    const next = capturePoint(st.pattern, st.data, st.markers[st.activeMarker]?.f ?? 0);
+    if (!next) { log(tr("Pattern: no S21 data at the capture frequency."), "error"); return; }
+    set({ pattern: next });
+  } finally {
+    capturing = false;
+    set({ patternBusy: false });
   }
-  const st = get();
-  const next = capturePoint(st.pattern, st.data, st.markers[st.activeMarker]?.f ?? 0);
-  if (!next) { log(tr("Pattern: no S21 data at the capture frequency."), "error"); return; }
-  set({ pattern: next });
 }
-export function undoPattern() {
-  const p = get().pattern;
-  if (!p.points.length) return;
-  const prev = normDeg(p.angle - p.step);
-  set({ pattern: { ...p, angle: prev, points: p.points.filter((q) => Math.abs(q.deg - prev) > 0.01) } });
-}
-export const clearPattern = () => set((s) => ({ pattern: { ...s.pattern, angle: 0, points: [] } }));
+export const undoPattern = () => set((s) => ({ pattern: undoCapture(s.pattern) }));
+export const clearPattern = () => set((s) => ({ pattern: { ...s.pattern, angle: 0, points: [], history: [] } }));
 export function exportPatternCsv() {
   const s = get();
   download(`webvna-pattern-${stamp()}.csv`, patternCsv(s.pattern.points, s.pattern.freq ?? s.markers[s.activeMarker]?.f ?? 0), "text/csv");

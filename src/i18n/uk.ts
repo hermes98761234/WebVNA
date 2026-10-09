@@ -715,4 +715,6 @@ export const UK: Record<string, string> = {
   "Beamwidth −3 dB": "Ширина променя −3 дБ",
   "Front-to-back": "Відношення фронт/тил",
   "Pattern: no S21 data at the capture frequency.": "Діаграма: немає даних S21 на частоті запису.",
+  "Pattern: connect the instrument first.": "Діаграма: спочатку підключіть прилад.",
+  "Pattern: no fresh sweep; point not captured.": "Діаграма: немає нового свіпу; точку не записано.",
 };

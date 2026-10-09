@@ -3,7 +3,7 @@ import { traceData, valueText, limitReports } from "../display";
 import { traceStats } from "../lib/stats";
 import { useStore, set, type MeasureMode, type MemorySlot, type RfTestSettings } from "../store";
 import { Check, Num, Section, Select } from "./inputs";
-import { antennaQ, compareS21, directivityTest, farFieldDistance, floorLimited, fspl, gainReference, gainTwoIdentical, isolationTest, rippleIn, s21Db, sameGrid } from "../lib/rftests";
+import { bandQ, compareS21, directivityTest, farFieldDistance, floorLimited, fspl, gainReference, gainTwoIdentical, interiorRipple, isolationTest, s21Db, sameGrid } from "../lib/rftests";
 import type { SweepPoint } from "../lib/litevna";
 import { cableAnalysis, crystalAnalysis, filterAnalysis, lcMatch, lcResonator, nearestIndex, resonances, swrBandwidth } from "../lib/analysis";
 import { FORMAT_BY_ID, impedance, swr, traceValues } from "../lib/formats";
@@ -87,7 +87,7 @@ export function AnalysisBox() {
     const summary = best && zb && (
       <div className="kv" style={{ marginBottom: 8 }}>
         <span>{tr("Best match")}</span><span>{fmtHz(best.f)} · {tr("VSWR {0}", swr(best.s11).toFixed(3))} · {zb[0].toFixed(1)} {zb[1] >= 0 ? "+" : "−"} j{Math.abs(zb[1]).toFixed(1)} Ω</span>
-        <span>{tr("VSWR < 2")}</span><span>{band?.bw ? `${fmtHz(band.low!)} – ${fmtHz(band.high!)} (${si(band.bw, "Hz")}, ${band.pct!.toFixed(2)} %) · Q ≈ ${antennaQ(band.bw / data[band.best].f).toFixed(1)}` : tr("none in this sweep")}</span>
+        <span>{tr("VSWR < 2")}</span><span>{band?.bw ? `${fmtHz(band.low!)} – ${fmtHz(band.high!)} (${si(band.bw, "Hz")}, ${band.pct!.toFixed(2)} %)${bandQ(band, data) != null ? ` · Q ≈ ${bandQ(band, data)!.toFixed(1)}` : ""}` : tr("none in this sweep")}</span>
         <span>{tr("Return loss")}</span><span>{tr("{0} dB · mismatch loss {1} dB", (-20 * Math.log10(Math.max(C.abs(best.s11), 1e-12))).toFixed(2), (-10 * Math.log10(1 - Math.min(C.abs(best.s11), 0.9999) ** 2)).toFixed(3))}</span>
       </div>
     );
@@ -147,7 +147,7 @@ export function AnalysisBox() {
           {r.bw60 && <><span>{tr("BW −60 dB")}</span><span>{si(r.bw60, "Hz")}</span></>}
           {r.q && <><span>Q</span><span>{r.q.toFixed(2)}</span></>}
           {r.shapeFactor && <><span>{tr("Shape factor 60/6")}</span><span>{r.shapeFactor.toFixed(2)}</span></>}
-          {r.low3 && r.high3 && (() => { const rp = rippleIn(data.map((p) => p.f), data.map((p) => s21Db(p.s21)), r.low3, r.high3); return rp != null && <><span>{tr("Passband ripple")}</span><span>{rp.toFixed(2)} dB</span></>; })()}
+          {r.low3 && r.high3 && <><span>{tr("Passband ripple")}</span><span>{interiorRipple(data.map((p) => s21Db(p.s21)), nearestIndex(data, r.low3), nearestIndex(data, r.high3)).toFixed(2)} dB</span></>}
         </div>
       );
     } else if (mode === "serieslc" || mode === "shuntlc") {

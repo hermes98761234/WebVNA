@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SweepPoint } from "./litevna";
 import type { Complex } from "./complex";
 import { C } from "./complex";
-import { antennaQ, compareS21, directivityTest, farFieldDistance, filterMask, floorLimited, fspl, gainReference, gainTwoIdentical, isolationTest, rippleIn, sameGrid, stability, stabilitySummary } from "./rftests";
+import { antennaQ, bandQ, interiorRipple, compareS21, directivityTest, farFieldDistance, filterMask, floorLimited, fspl, gainReference, gainTwoIdentical, isolationTest, rippleIn, sameGrid, stability, stabilitySummary } from "./rftests";
 
 const fromDb = (db: number, deg = 0): Complex => C.polar(10 ** (db / 20), (deg * Math.PI) / 180);
 const sweep = (s21: (i: number) => Complex, n = 5, f0 = 1e9): SweepPoint[] =>
@@ -120,5 +120,21 @@ describe("ripple and filter mask", () => {
       { kind: "upper", f1: 300, f2: 400, v1: -40, v2: -40, enabled: true },
     ]);
     expect(filterMask({ passLo: 100, passHi: 200, maxIl: 2, stopLo: null, stopHi: null, minRej: 40, fMin: 10, fMax: 400 })).toHaveLength(1);
+  });
+});
+
+describe("review fixes", () => {
+  it("interiorRipple ignores the roll-off edges", () => {
+    // edges at −3 dB, Chebyshev-like interior ripple of 0.5 dB
+    const v = [-3, -1.5, -0.2, 0, -0.3, -0.5, -0.2, 0, -0.4, -1.8, -3];
+    expect(interiorRipple(v, 0, v.length - 1)).toBeCloseTo(0.5, 9);
+    expect(interiorRipple([-3, -1, 0, -1, -3], 0, 4)).toBe(0); // single hump: no ripple
+  });
+  it("bandQ is null when the VSWR band is clipped by the sweep", () => {
+    const data = [1, 2, 3, 4, 5].map((f) => ({ f: f * 1e9, s11: [0, 0] as Complex, s21: [0, 0] as Complex }));
+    const band = { best: 2, bestSwr: 1.1, low: 2.5e9, high: 3.5e9, bw: 1e9, pct: 100 / 3 };
+    expect(bandQ(band, data)).toBeCloseTo(antennaQ(1 / 3), 9);
+    expect(bandQ({ ...band, low: 1e9, bw: 2.5e9 }, data)).toBeNull();
+    expect(bandQ({ ...band, low: null, high: null, bw: null, pct: null }, data)).toBeNull();
   });
 });

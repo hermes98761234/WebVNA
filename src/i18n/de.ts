@@ -715,4 +715,6 @@ export const DE: Record<string, string> = {
   "Beamwidth −3 dB": "Halbwertsbreite −3 dB",
   "Front-to-back": "Vor-Rück-Verhältnis",
   "Pattern: no S21 data at the capture frequency.": "Richtdiagramm: keine S21-Daten bei der Erfassungsfrequenz.",
+  "Pattern: connect the instrument first.": "Richtdiagramm: zuerst das Gerät verbinden.",
+  "Pattern: no fresh sweep; point not captured.": "Richtdiagramm: kein neuer Sweep; Punkt nicht erfasst.",
 };

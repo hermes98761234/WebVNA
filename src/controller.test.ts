@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { get, set, initialState } from "./store";
-import { buildFlip, connectSimulator, disconnect, measureFlip } from "./controller";
+import { buildFlip, capturePattern, connectSimulator, disconnect, measureFlip, sweepOnce } from "./controller";
 import { dutS4 } from "./lib/mock";
 import { C } from "./lib/complex";
 
@@ -32,5 +32,37 @@ describe("device-cal preference", () => {
     await connectSimulator();
     expect(get().capabilities?.deviceCal).toBe(false);
     expect(get().deviceCal).toBe(true);
+  });
+});
+
+describe("radiation pattern capture", () => {
+  const setup = async () => {
+    set({ ...initialState, simDut: "filter", start: 400e6, stop: 500e6, points: 21 });
+    await connectSimulator();
+    set((s) => ({ pattern: { ...s.pattern, freq: 435e6 } }));
+  };
+  it("captures from a fresh sweep and advances the angle", async () => {
+    await setup();
+    const n0 = get().sweepCount;
+    await capturePattern();
+    expect(get().sweepCount).toBe(n0 + 1);
+    expect(get().pattern.points).toHaveLength(1);
+    expect(get().pattern.angle).toBe(10);
+  });
+  it("does not record a point when no fresh sweep arrives (frozen)", async () => {
+    await setup();
+    await sweepOnce();
+    set({ frozen: true });
+    await capturePattern();
+    expect(get().pattern.points).toHaveLength(0);
+    expect(get().pattern.angle).toBe(0);
+    expect(get().log.at(-1)?.level).toBe("error");
+  });
+  it("ignores a second press while a capture is pending", async () => {
+    await setup();
+    await sweepOnce(); // stale data exists, so a second capture would succeed if it weren't blocked
+    await Promise.all([capturePattern(), capturePattern()]);
+    expect(get().pattern.points).toHaveLength(1);
+    expect(get().pattern.angle).toBe(10);
   });
 });
