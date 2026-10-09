@@ -40,6 +40,8 @@ src/lib/              NO DOM, NO React, NO i18n. Runs in Node (vitest)
   limits.ts stats.ts  limit lines + pass/fail; trace statistics and ripple
   averaging.ts        outlier-rejecting sweep averaging (SweepAccumulator)
   permeability.ts     µ′/µ″ of a toroid core from S11
+  rftests.ts          antenna Q, K/μ stability, splitter balance, isolation, coupler directivity, Friis gain, ripple, filter masks
+  pattern.ts          radiation pattern capture (|S21| per angle), beamwidth, front-to-back
   gating.ts           time-domain gating (FD→TD→gate→FD)
   s2.ts deembed.ts    2×2 S/T maths; fixture de-embedding/embedding
   twoport.ts          flip-DUT combination into full S-parameters

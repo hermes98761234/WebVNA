@@ -78,6 +78,45 @@ For a symmetric, reciprocal DUT (a cable, an attenuator) **Fake flip** skips the
 
 On the Display tab, per trace, add segments with a start/stop frequency, a start/stop value and a kind (upper or lower limit); a sensible default is suggested for the trace format (SWR: upper 1.5). Values are in the trace's display units (dB, SWR, ...). The sweep shows pass/fail and the point with the smallest margin. Limits can be exported and imported as text. Scripts get the result through `webvna.limits()`.
 
+## RF component tests
+
+These Measure modes compare sweeps stored in the memory slots (Display → Memories). Keep the sweep settings unchanged between the stored sweeps; the modes refuse sweeps on different frequency grids. With markers 1 and 2 on, results cover the range between them; otherwise the whole sweep.
+
+| Mode | Memory A | Memory B | Result |
+|---|---|---|---|
+| Splitter balance (S21) | output 1 → port 2 | output 2 → port 2 | amplitude and phase imbalance, mean loss of each output |
+| Isolator / circulator (S21) | forward path | reversed or isolated path | insertion loss, worst isolation, isolation − loss |
+| Coupler directivity (S21) | input → coupled port | coupler reversed → coupled port | coupling, directivity = isolation − coupling |
+
+Terminate the unused ports with 50 Ω loads.
+
+**Dynamic range.** High isolation and directivity are limited by the instrument: roughly 70–90 dB at low frequencies, and less towards 6 GHz. For isolation and directivity, store a *noise floor* sweep in memory D, with both ports terminated, and tick *Memory D is the noise floor*. When the isolated path is within 10 dB of that floor, the result is flagged as dynamic-range limited, and the true value is at least as good as shown.
+
+**Antenna gain (S21).** Calibrate THRU at the antenna connectors, then face the two antennas at a known distance.
+- *Two identical antennas:* G = (S21 + FSPL) / 2.
+- *Reference antenna:* store the sweep of a reference antenna with known gain in memory A, swap in the antenna under test, and enter the reference gain. G = G_ref + S21 − S21_ref.
+
+Enter the largest antenna dimension D. The result warns when the distance is closer than the far field (2D²/λ). Room reflections limit the accuracy to about ±1–2 dB.
+
+**Antenna Q.** The summary shows Q ≈ (s − 1) / (√s · FBW) next to the VSWR < 2 bandwidth (Yaghjian–Best, s = 2).
+
+**Filter mask and ripple.** On an S21 log-magnitude trace, the Limits section's *Filter mask…* builds limit lines from three settings:
+- the passband (maximum insertion loss)
+- the lower and upper stopband edges (minimum rejection)
+- the passband ripple, which is checked live
+
+*Filter* mode also reports the passband ripple between the −3 dB points.
+
+**Stability (K, μ).** After *Build S-parameters* in the 2-port section, it shows the minimum Rollett K, the minimum μ, the maximum |Δ|, and whether the device is unconditionally stable (μ > 1 everywhere). The flip method is less accurate than a true 2-port VNA, so treat values near μ = 1 with care.
+
+## Radiation pattern
+
+Measure → *Radiation pattern*: put the antenna under test on port 2 (on a turntable or rotated by hand) and a fixed source antenna on port 1.
+1. Choose the frequency (the active marker by default) and the angle step.
+2. Rotate to the angle shown on **Capture**, and press it.
+
+Each capture takes a fresh sweep, stores |S21| at that angle and advances by the step. The polar plot is normalised to the peak (30 dB range). Below it are the peak direction, the −3 dB beamwidth and the front-to-back ratio. **Undo** removes the last point, and **Export CSV** saves angle and dB. The pattern is included in session files.
+
 ## Statistics
 
 Measure → *Statistics* shows, for the active trace between markers 1 and 2 (or the whole sweep when both are not enabled): point count, min, max, mean, standard deviation, peak-to-peak, least-squares slope (per MHz) and flatness, the peak-to-peak of what remains after removing that slope. Use it for passband ripple and amplifier gain flatness.
