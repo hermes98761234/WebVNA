@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeDefaults, mergePersisted, initialState } from "./store";
+import { mergeDefaults, mergePersisted, initialState, DEFAULT_RF_TEST } from "./store";
 import { limitReports } from "./display";
 import type { SweepPoint } from "./lib/litevna";
 
@@ -84,5 +84,13 @@ describe("limitReports", () => {
     expect(limitReports(mk([{ kind: "upper", f1: 1e6, f2: 3e6, v1: 2, v2: 2 }]))[0].status).toBe("fail");
     expect(limitReports(mk([{ kind: "upper", f1: 5e6, f2: 6e6, v1: 2, v2: 2 }]))[0].status).toBe("none");
     expect(limitReports(mk([]))).toEqual([]);
+  });
+});
+
+describe("rfTest settings", () => {
+  it("fills defaults and repairs bad fields", () => {
+    const p = mergePersisted({ rfTest: { gainMethod: "ref", distance: -1, refGain: "x", floorSlot: true } });
+    expect(p.rfTest).toEqual({ ...DEFAULT_RF_TEST, gainMethod: "ref", floorSlot: true });
+    expect(mergePersisted({ measure: "directivity" }).measure).toBe("directivity");
   });
 });

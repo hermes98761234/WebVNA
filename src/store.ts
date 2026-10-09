@@ -14,13 +14,17 @@ import type { LimitSegment } from "./lib/limits";
 import { NO_FIXTURE, type FixtureSettings } from "./lib/deembed";
 import type { Dut } from "./lib/mock";
 import type { Complex } from "./lib/complex";
+import { DEFAULT_PATTERN, type PatternState } from "./lib/pattern";
 import type { SmithReadout } from "./display";
 import { tr, type Lang } from "./i18n";
 import { sanitizePersisted } from "./validate";
 
 export type ConnStatus = "disconnected" | "connecting" | "connected";
 export type SweepMode = "linear" | "log" | "cw";
-export type MeasureMode = "off" | "lcmatch" | "cable" | "serieslc" | "shuntlc" | "xtal" | "filter" | "resonance" | "stats";
+export type MeasureMode = "off" | "lcmatch" | "cable" | "serieslc" | "shuntlc" | "xtal" | "filter" | "resonance" | "stats" | "balance" | "isolation" | "directivity" | "gain";
+/** Settings of the multi-sweep RF tests (Measure tab). floorSlot: memory D holds a noise-floor sweep (ports terminated). */
+export interface RfTestSettings { floorSlot: boolean; gainMethod: "two" | "ref"; distance: number; refGain: number; antSize: number }
+export const DEFAULT_RF_TEST: RfTestSettings = { floorSlot: false, gainMethod: "two", distance: 1, refGain: 0, antSize: 0.1 };
 export type SimModel = "litevna" | "nanovna-h" | "nanovna-h4" | "nanovna-stock" | "librevna";
 export const SIM_MODELS: SimModel[] = ["litevna", "nanovna-h", "nanovna-h4", "nanovna-stock", "librevna"];
 export type MemorySlot = "A" | "B" | "C" | "D";
@@ -130,6 +134,9 @@ export interface State {
   showRect: boolean;
   measure: MeasureMode;
   measureVf: number;
+  rfTest: RfTestSettings;
+  /** Radiation pattern capture (session only, not persisted). */
+  pattern: PatternState;
   // misc
   log: LogEntry[];
   commsMonitor: boolean;
@@ -155,7 +162,7 @@ export const initialState: State = {
   running: false, continuous: false, progress: 0, sweepCount: 0, lastSweepMs: 0, raw: [], data: [], frozen: false,
   calWork: { freqs: null, meas: {}, thru11: null }, cal: null, terms: null, calEnabled: true, kit: IDEAL_KIT, enhancedResponse: false, correction: NO_CORRECTION, fixture: NO_FIXTURE, twoPort: { fwd: null, rev: null, result: null },
   traces: defaultTraces(), activeTrace: 0, memories: {}, refs: [], markers: defaultMarkers(), activeMarker: 0, deltaRef: null,
-  tdr: DEFAULT_TDR, gate: DEFAULT_GATE, core: DEFAULT_CORE, smithAdmittance: false, smithReadout: "rlc", showSmith: true, showRect: true, measure: "off", measureVf: 0.66,
+  tdr: DEFAULT_TDR, gate: DEFAULT_GATE, core: DEFAULT_CORE, smithAdmittance: false, smithReadout: "rlc", showSmith: true, showRect: true, measure: "off", measureVf: 0.66, rfTest: DEFAULT_RF_TEST, pattern: DEFAULT_PATTERN,
   log: [], commsMonitor: false, autoSave: false, autoSaveName: "sweep", screenshot: null,
 };
 
@@ -163,7 +170,7 @@ export const initialState: State = {
 const PERSIST: (keyof State)[] = [
   "start", "stop", "points", "sweepMode", "cwFreq", "swAverage", "swDiscard", "ifAverage", "powerHf", "powerLf", "channelsMode", "deviceCal",
   "kit", "enhancedResponse", "correction", "fixture", "traces", "markers", "tdr", "gate", "core", "smithAdmittance", "smithReadout", "showSmith", "showRect", "measure", "measureVf", "simDut", "simModel",
-  "calEnabled", "autoSaveName", "lang",
+  "calEnabled", "autoSaveName", "lang", "rfTest",
 ];
 const STORAGE_KEY = "webvna.settings.v1";
 

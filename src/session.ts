@@ -5,6 +5,7 @@ import type { Complex } from "./lib/complex";
 import { get, log, mergePersisted, persistedSettings, set, type MemorySlot, type RefFile, MEMORY_SLOTS } from "./store";
 import { download, recompute, setCalibration, stop } from "./controller";
 import { tr } from "./i18n";
+import { DEFAULT_PATTERN, addPatternPoint, normDeg, type PatternPoint, type PatternState } from "./lib/pattern";
 
 const SESSION_FORMAT = "webvna-session";
 const SHARE_FORMAT = "webvna-share";
@@ -58,6 +59,7 @@ export interface SessionFile {
   memories: Partial<Record<MemorySlot, SweepPoint[]>>;
   refs: RefFile[];
   twoPort?: { result: SweepPoint[] };
+  pattern?: PatternState;
 }
 
 export function exportSession(includeData = true): SessionFile {
@@ -71,6 +73,7 @@ export function exportSession(includeData = true): SessionFile {
   };
   if (includeData && s.raw.length) out.data = { raw: s.raw, data: s.data };
   if (s.twoPort.result) out.twoPort = { result: s.twoPort.result };
+  if (s.pattern.points.length) out.pattern = s.pattern;
   return out;
 }
 
@@ -108,6 +111,18 @@ export function importSession(input: unknown): void {
     }
   }
   const twoPort = isObj(o.twoPort) && o.twoPort.result ? checkSweep(o.twoPort.result, "2-port result") : null;
+  let pattern: PatternState = DEFAULT_PATTERN;
+  if (o.pattern !== undefined) {
+    const p = o.pattern;
+    if (!isObj(p) || !Array.isArray(p.points) || !p.points.every((q) => isObj(q) && isNum(q.deg) && isNum(q.db)))
+      throw new Error(tr("Session: the radiation pattern is malformed."));
+    pattern = {
+      freq: isNum(p.freq) && p.freq > 0 ? p.freq : null,
+      step: isNum(p.step) && p.step > 0 && p.step <= 180 ? p.step : DEFAULT_PATTERN.step,
+      angle: isNum(p.angle) ? normDeg(p.angle) : 0,
+      points: (p.points as PatternPoint[]).reduce((acc, q) => addPatternPoint(acc, { deg: q.deg, db: q.db }), [] as PatternPoint[]),
+    };
+  }
 
   // structural checks on the raw settings (clear errors); mergePersisted then drops/repairs any individual invalid value
   const rawSettings = o.settings;
@@ -121,7 +136,7 @@ export function importSession(input: unknown): void {
   stop();
   setCalibration(cal); // first: it forces calEnabled, which the settings then override
   if (cal) set({ kit: cal.kit, enhancedResponse: cal.enhancedResponse });
-  set({ ...settings, memories, refs, twoPort: { fwd: null, rev: null, result: twoPort }, raw: raw ?? [], data: raw ? (data ?? []) : [] });
+  set({ ...settings, memories, refs, twoPort: { fwd: null, rev: null, result: twoPort }, pattern, raw: raw ?? [], data: raw ? (data ?? []) : [] });
   recompute();
   log(tr("Session loaded: {0} points.", raw?.length ?? 0));
 }

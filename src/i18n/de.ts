@@ -646,4 +646,5 @@ export const DE: Record<string, string> = {
   "LibreVNA packet protocol {0} (experimental)": "LibreVNA-Paketprotokoll {0} (experimentell)",
   "WebUSB: LiteVNA / NanoVNA V2 over USB serial, or LibreVNA (experimental)": "WebUSB: LiteVNA / NanoVNA V2 über USB-Seriell oder LibreVNA (experimentell)",
   "Connected via {0}: {1}, firmware {2} (experimental LibreVNA protocol).": "Verbunden über {0}: {1}, Firmware {2} (experimentelles LibreVNA-Protokoll).",
+  "Session: the radiation pattern is malformed.": "Sitzung: das Richtdiagramm ist fehlerhaft.",
 };

@@ -12,7 +12,7 @@ import type { Correction } from "./lib/calibration";
 import type { FixtureSettings, FixtureStage } from "./lib/deembed";
 import { DUTS } from "./lib/mock";
 import { LANGS } from "./i18n";
-import type { Marker, MeasureMode, State, Trace } from "./store";
+import type { Marker, MeasureMode, RfTestSettings, State, Trace } from "./store";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
@@ -31,7 +31,7 @@ const MAX_TRACES = 8;
 const MAX_STAGES = 32;
 const MAX_FILE_POINTS = 100000;
 
-export const MEASURE_MODES: MeasureMode[] = ["off", "lcmatch", "cable", "serieslc", "shuntlc", "xtal", "filter", "resonance", "stats"];
+export const MEASURE_MODES: MeasureMode[] = ["off", "lcmatch", "cable", "serieslc", "shuntlc", "xtal", "filter", "resonance", "stats", "balance", "isolation", "directivity", "gain"];
 export const SMITH_READOUT_IDS = ["rlc", "rx", "gb", "rpxp", "rplc", "lin", "log", "reim"] as const;
 export const SEARCH_MODES = ["max", "min", "peak_left", "peak_right", "valley_left", "valley_right"] as const;
 const CHANNELS = ["s11", "s21", "s12", "s22"] as const;
@@ -71,6 +71,18 @@ export function sanitizeCore(v: unknown, def: CoreParams): CoreParams {
   const o = isObj(v) ? v : {};
   const pos = (x: unknown) => isNum(x) && x > 0 && x < 1e6;
   return { turns: field(o, "turns", def.turns, pos), areaMm2: field(o, "areaMm2", def.areaMm2, pos), pathMm: field(o, "pathMm", def.pathMm, pos) };
+}
+
+export function sanitizeRfTest(v: unknown, def: RfTestSettings): RfTestSettings {
+  const o = isObj(v) ? v : {};
+  const pos = (x: unknown) => isNum(x) && x > 0 && x < 1e6;
+  return {
+    floorSlot: field(o, "floorSlot", def.floorSlot, isBool),
+    gainMethod: field(o, "gainMethod", def.gainMethod, (x) => x === "two" || x === "ref"),
+    distance: field(o, "distance", def.distance, pos),
+    refGain: field(o, "refGain", def.refGain, (x) => inRange(x, -50, 100)),
+    antSize: field(o, "antSize", def.antSize, pos),
+  };
 }
 
 export function sanitizeCorrection(v: unknown, def: Correction): Correction {
@@ -220,6 +232,7 @@ export function sanitizePersisted(o: Obj, ctx: SanitizeContext): Partial<State> 
   put("tdr", sanitizeTdr(o.tdr, def.tdr), "tdr" in o);
   put("gate", sanitizeGate(o.gate, def.gate), "gate" in o);
   put("core", sanitizeCore(o.core, def.core), "core" in o);
+  put("rfTest", sanitizeRfTest(o.rfTest, def.rfTest), "rfTest" in o);
   put("correction", sanitizeCorrection(o.correction, def.correction), "correction" in o);
   put("kit", sanitizeKit(o.kit, def.kit), "kit" in o);
   put("fixture", sanitizeFixture(o.fixture, def.fixture), "fixture" in o);

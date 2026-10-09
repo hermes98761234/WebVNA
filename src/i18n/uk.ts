@@ -646,4 +646,5 @@ export const UK: Record<string, string> = {
   "LibreVNA packet protocol {0} (experimental)": "Пакетний протокол LibreVNA {0} (експериментально)",
   "WebUSB: LiteVNA / NanoVNA V2 over USB serial, or LibreVNA (experimental)": "WebUSB: LiteVNA / NanoVNA V2 через USB-послідовний порт або LibreVNA (експериментально)",
   "Connected via {0}: {1}, firmware {2} (experimental LibreVNA protocol).": "Підключено через {0}: {1}, прошивка {2} (експериментальний протокол LibreVNA).",
+  "Session: the radiation pattern is malformed.": "Сеанс: діаграма спрямованості пошкоджена.",
 };
