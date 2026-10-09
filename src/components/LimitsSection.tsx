@@ -7,6 +7,7 @@ import { BANDS } from "./StimulusPanel";
 import { Check, FreqInput, Num, Section, Select, Field } from "./inputs";
 import { fmtHz } from "../lib/units";
 import { useT } from "../i18n";
+import { filterMask, rippleIn, s21Db } from "../lib/rftests";
 
 /** Sensible starting limit for a format: [kind, value]. */
 function defaultLimit(format: string, channel: string): [LimitKind, number] {
@@ -78,6 +79,39 @@ export function LimitsSection() {
       </div>
       {segs.length > 0 && <p className="hint">{t("Limits apply in the frequency domain, in the units of the trace ({0}). Band: {1} – {2}.", unit || t("unitless"), fmtHz(s.start), fmtHz(s.stop))}</p>}
       <Check checked={segs.length > 0 && segs.every((l) => l.enabled !== false)} onChange={(v) => setSegs(segs.map((l) => ({ ...l, enabled: v })))}>{t("All segments on")}</Check>
+      {tc.channel === "s21" && (tc.format === "logmag" || tc.format === "s21gain") && <FilterMask ti={ti} />}
     </Section>
+  );
+}
+
+function FilterMask({ ti }: { ti: number }) {
+  const t = useT();
+  const start = useStore((s) => s.start), stop = useStore((s) => s.stop), data = useStore((s) => s.data);
+  const [open, setOpen] = useState(false);
+  const [m, setM] = useState(() => {
+    const w = stop - start;
+    return { passLo: start + 0.4 * w, passHi: start + 0.6 * w, maxIl: 3, maxRipple: 1, stopLo: (start + 0.2 * w) as number | null, stopHi: (start + 0.8 * w) as number | null, minRej: 40 };
+  });
+  const p = (q: Partial<typeof m>) => setM({ ...m, ...q });
+  const ripple = data.length ? rippleIn(data.map((x) => x.f), data.map((x) => s21Db(x.s21)), m.passLo, m.passHi) : null;
+  if (!open) return <button className="small" onClick={() => setOpen(true)}>{t("Filter mask…")}</button>;
+  return (
+    <div style={{ borderTop: "1px solid var(--line)", paddingTop: 4, marginTop: 4 }}>
+      <p className="hint">{t("Builds limit lines: passband loss at most the max IL, stopbands at least the min rejection below 0 dB. Untick a stopband edge for a one-sided mask.")}</p>
+      <div className="grid2">
+        <Field label="Passband from"><FreqInput value={m.passLo} onChange={(v) => p({ passLo: v })} ariaLabel="Passband start" /></Field>
+        <Field label="Passband to"><FreqInput value={m.passHi} onChange={(v) => p({ passHi: v })} ariaLabel="Passband stop" /></Field>
+        <Field label="Max IL (dB)"><Num value={m.maxIl} min={0} step={0.1} onChange={(v) => p({ maxIl: v })} /></Field>
+        <Field label="Max ripple (dB)"><Num value={m.maxRipple} min={0} step={0.1} onChange={(v) => p({ maxRipple: v })} /></Field>
+        <Field label="Lower stopband edge"><Check checked={m.stopLo != null} onChange={(v) => p({ stopLo: v ? start + 0.2 * (stop - start) : null })}>{m.stopLo != null ? "" : t("off")}</Check>{m.stopLo != null && <FreqInput value={m.stopLo} onChange={(v) => p({ stopLo: v })} ariaLabel="Lower stopband edge" />}</Field>
+        <Field label="Upper stopband edge"><Check checked={m.stopHi != null} onChange={(v) => p({ stopHi: v ? start + 0.8 * (stop - start) : null })}>{m.stopHi != null ? "" : t("off")}</Check>{m.stopHi != null && <FreqInput value={m.stopHi} onChange={(v) => p({ stopHi: v })} ariaLabel="Upper stopband edge" />}</Field>
+        <Field label="Min rejection (dB)"><Num value={m.minRej} min={0} step={1} onChange={(v) => p({ minRej: v })} /></Field>
+      </div>
+      {ripple != null && <p className="hint" style={{ color: ripple <= m.maxRipple ? "var(--ok)" : "var(--err)", fontWeight: 600 }}>{t("Passband ripple {0} dB (max {1}): {2}", ripple.toFixed(2), m.maxRipple, ripple <= m.maxRipple ? "PASS" : "FAIL")}</p>}
+      <div className="row">
+        <button className="small primary" onClick={() => updateTrace(ti, { limits: filterMask({ ...m, fMin: start, fMax: stop }) })}>{t("Apply mask (replaces limits)")}</button>
+        <button className="small" onClick={() => setOpen(false)}>{t("Close")}</button>
+      </div>
+    </div>
   );
 }
